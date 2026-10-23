@@ -218,3 +218,15 @@ export function convertToPkr(amount: number, currency: string): number {
   const rate = CURRENCY_RATES_TO_PKR[currency] || 280;
   return Math.round(amount * rate);
 }
+
+export interface GroundingSource {
+  title: string;
+  uri: string;
+}
+
+export interface LiveSearchResult {
+  text: string;
+  sources: GroundingSource[];
+  searchQueries: string[];
+}
+

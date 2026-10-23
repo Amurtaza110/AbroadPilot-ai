@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db, StudentProfile, Application, StudentDocument, RoadmapTask, University, Scholarship } from './db';
-import { explainProgramMatch, chatAdvisor, generateSopAssistance, draftEmailInquiry } from './ai';
+import { explainProgramMatch, chatAdvisor, generateSopAssistance, draftEmailInquiry, searchUniversitiesAndScholarships } from './ai';
 
 const router = Router();
 
@@ -355,17 +355,52 @@ router.post('/ai/match-explain', async (req: Request, res: Response) => {
   res.json({ success: true, analysis });
 });
 
+router.post('/ai/live-search', async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  const profile = db.getProfile(userId);
+  const { query, category } = req.body;
+
+  if (!query || typeof query !== 'string') {
+    return res.status(400).json({ success: false, message: "Query string is required" });
+  }
+
+  const result = await searchUniversitiesAndScholarships({
+    query,
+    category: category || 'general',
+    profile
+  });
+
+  res.json({
+    success: true,
+    text: result.text,
+    sources: result.sources,
+    searchQueries: result.searchQueries
+  });
+});
+
 router.post('/ai/chat', async (req: Request, res: Response) => {
   const userId = getUserId(req);
   const profile = db.getProfile(userId);
-  const { message, history, activeContext } = req.body;
+  const { message, history, activeContext, useGoogleSearch } = req.body;
 
   if (!message) {
     return res.status(400).json({ success: false, message: "Message is required" });
   }
 
-  const reply = await chatAdvisor(message, history || [], profile, activeContext);
-  res.json({ success: true, reply });
+  const result = await chatAdvisor(
+    message,
+    history || [],
+    profile,
+    activeContext,
+    Boolean(useGoogleSearch)
+  );
+
+  res.json({
+    success: true,
+    reply: result.reply,
+    sources: result.sources,
+    webSearchQueries: result.webSearchQueries
+  });
 });
 
 router.post('/ai/sop-assistant', async (req: Request, res: Response) => {

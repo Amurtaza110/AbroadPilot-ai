@@ -9,7 +9,8 @@ import {
   Check,
   X,
   SlidersHorizontal,
-  DollarSign
+  DollarSign,
+  Globe
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { University, Program, convertToPkr, formatCurrencyPkr } from '../types';
@@ -17,6 +18,7 @@ import { UniversityCard } from '../components/UniversityCard';
 import { CompareModal } from '../components/CompareModal';
 import { AiMatchModal } from '../components/AiMatchModal';
 import { ApplicationModal } from '../components/ApplicationModal';
+import { LiveSearchModal } from '../components/LiveSearchModal';
 import { useToast } from '../context/ToastContext';
 
 interface DiscoverProps {
@@ -48,6 +50,9 @@ export const Discover: React.FC<DiscoverProps> = ({ searchQuery }) => {
 
   // Application Modal State
   const [activeAppModal, setActiveAppModal] = useState<{ uni: University; prog: Program } | null>(null);
+
+  // Live Google Search Modal State
+  const [showLiveSearchModal, setShowLiveSearchModal] = useState(false);
 
   const fetchUniversities = async () => {
     try {
@@ -204,6 +209,34 @@ export const Discover: React.FC<DiscoverProps> = ({ searchQuery }) => {
             <span>Compare ({comparedUnis.length}) Universities</span>
           </button>
         )}
+      </div>
+
+      {/* Google Search Grounding Discovery Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 rounded-2xl p-4 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg border border-teal-800/40">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300 shrink-0">
+            <Globe className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-sm text-white">Cannot find your target university or program?</span>
+              <span className="text-[10px] bg-teal-400/20 text-teal-300 font-bold px-2 py-0.5 rounded-full border border-teal-400/30">
+                Google Search Grounded
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-0.5">
+              Query Gemini 3.8 Flash with live Google Search to discover any university, admission benchmarks & deadlines worldwide.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowLiveSearchModal(true)}
+          className="px-4 py-2 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-slate-950 font-extrabold rounded-xl text-xs flex items-center gap-2 shadow-md shrink-0 transition-all hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <Search className="w-3.5 h-3.5 text-slate-950" />
+          <span>Search Universities with Google AI</span>
+        </button>
       </div>
 
       {/* Filter Toolbar */}
@@ -414,6 +447,14 @@ export const Discover: React.FC<DiscoverProps> = ({ searchQuery }) => {
           }}
           onClose={() => setActiveAppModal(null)}
           onSave={handleCreateApplication}
+        />
+      )}
+
+      {/* Live Google Search Modal */}
+      {showLiveSearchModal && (
+        <LiveSearchModal
+          initialCategory="universities"
+          onClose={() => setShowLiveSearchModal(false)}
         />
       )}
     </div>

@@ -8,11 +8,14 @@ import {
   AlertCircle,
   Calendar,
   Globe,
-  DollarSign
+  DollarSign,
+  Search,
+  Sparkles
 } from 'lucide-react';
 import { Scholarship, formatCurrencyPkr, convertToPkr } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { LiveSearchModal } from '../components/LiveSearchModal';
 
 export const Scholarships: React.FC = () => {
   const { user } = useAuth();
@@ -25,6 +28,7 @@ export const Scholarships: React.FC = () => {
   const [selectedDestination, setSelectedDestination] = useState<string>('All');
   const [selectedCoverage, setSelectedCoverage] = useState<string>('All');
   const [pakistanPriorityOnly, setPakistanPriorityOnly] = useState<boolean>(false);
+  const [showLiveSearchModal, setShowLiveSearchModal] = useState<boolean>(false);
 
   const fetchScholarships = async () => {
     try {
@@ -100,6 +104,34 @@ export const Scholarships: React.FC = () => {
         <div className="text-xs font-semibold text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200 self-start sm:self-auto shadow-sm">
           {savedIds.length} Scholarships Tracked
         </div>
+      </div>
+
+      {/* Live Google Search Grounded Scholarships Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-4 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg border border-indigo-800/40">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shrink-0">
+            <Award className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-sm text-white">Find 2025/2026 Scholarships with Google Search</span>
+              <span className="text-[10px] bg-indigo-400/20 text-indigo-300 font-bold px-2 py-0.5 rounded-full border border-indigo-400/30">
+                Google Search Grounded
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-0.5">
+              Search live government calls, university fee waivers, and international bilateral grants for Pakistani applicants.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowLiveSearchModal(true)}
+          className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-2 shadow-md shrink-0 transition-all hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <Search className="w-3.5 h-3.5 text-white" />
+          <span>Live Search Scholarships</span>
+        </button>
       </div>
 
       {/* Filter Bar */}
@@ -257,6 +289,14 @@ export const Scholarships: React.FC = () => {
             );
           })}
         </div>
+      )}
+
+      {/* Live Google Search Modal */}
+      {showLiveSearchModal && (
+        <LiveSearchModal
+          initialCategory="scholarships"
+          onClose={() => setShowLiveSearchModal(false)}
+        />
       )}
     </div>
   );

@@ -25,8 +25,8 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
   const { showToast } = useToast();
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('hamza.tariq@example.com');
+  const [password, setPassword] = useState('password123');
   const [fullName, setFullName] = useState('');
   const [residenceCity, setResidenceCity] = useState('Lahore, Punjab');
   const [targetDegree, setTargetDegree] = useState<'Bachelor' | 'Master' | 'PhD'>('Master');
@@ -233,6 +233,14 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
               >
                 <span>{loading ? 'Authenticating...' : 'Sign In to Dashboard'}</span>
                 <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDemoClick('student')}
+                className="w-full py-2.5 bg-slate-800/80 hover:bg-slate-800 text-slate-300 font-semibold rounded-xl text-xs border border-slate-700/80 transition-colors flex items-center justify-center gap-2"
+              >
+                <span>Instant Candidate Preview (Hamza Tariq)</span>
               </button>
             </form>
           )}

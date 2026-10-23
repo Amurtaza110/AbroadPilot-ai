@@ -131,6 +131,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <GraduationCap className="w-4 h-4 text-teal-400" />
               <span>Explore Universities</span>
             </button>
+            <button
+              onClick={() => onNavigateTab('advisor')}
+              className="px-4 py-2.5 bg-gradient-to-r from-teal-500/20 to-indigo-500/20 hover:from-teal-500/30 hover:to-indigo-500/30 text-teal-300 font-bold text-xs rounded-xl border border-teal-500/40 transition-colors flex items-center gap-2"
+            >
+              <Sparkles className="w-4 h-4 text-teal-300" />
+              <span>Live Search Grounding</span>
+            </button>
           </div>
         </div>
 
