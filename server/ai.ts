@@ -1,22 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
-import { StudentProfile, Program, University } from "./db";
+import { StudentProfile, Program, University } from "./data";
 
-// Server-side initialization
-const apiKey = process.env.GEMINI_API_KEY || "";
-let genAI: GoogleGenAI | null = null;
+// Netlify AI Gateway injects GEMINI_API_KEY and GOOGLE_GEMINI_BASE_URL at runtime,
+// so the default constructor routes requests through the gateway with no key management.
+// Without them (e.g. plain `vite` dev) the app falls back to deterministic responses.
+const genAI: GoogleGenAI | null = process.env.GEMINI_API_KEY ? new GoogleGenAI({}) : null;
 
-if (apiKey) {
-  genAI = new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      }
-    }
-  });
-}
+export const isAiConfigured = () => genAI !== null;
 
-const DEFAULT_MODEL = "gemini-3.8-flash";
+export const DEFAULT_MODEL = "gemini-3.8-flash";
 
 export interface MatchAnalysisResult {
   matchScore: number;
@@ -242,7 +234,7 @@ CRITICAL RESEARCH GUIDELINES:
 
   if (!genAI) {
     return {
-      text: `### Verified Opportunities (Simulation Mode)\n\n**1. Technical University of Munich (TUM) - Germany**\n- **Program:** M.Sc. Informatics / Data Engineering\n- **Tuition:** ~€2,000–€3,000/semester for non-EU students (public technical university).\n- **Minimum CGPA:** ~3.2/4.0 from HEC-recognized university.\n- **APS Islamabad Requirement:** Mandatory before visa processing.\n- **Deadline:** May 31 for Winter Intake.\n\n**2. Politecnico di Milano - Italy & DSU Regional Grant**\n- **Program:** M.Sc. Computer Science and Engineering\n- **Tuition:** ~€3,900/year, fully waivable via the DSU Scholarship.\n- **DSU Grant:** Covers full tuition waiver + ~€7,500/year living stipend for eligible Pakistani students.\n- **Deadline:** Universitaly pre-enrolment closes around June/July.\n\n*Configure GEMINI_API_KEY to activate live real-time Google Search grounding.*`,
+      text: `### Verified Opportunities (Simulation Mode)\n\n**1. Technical University of Munich (TUM) - Germany**\n- **Program:** M.Sc. Informatics / Data Engineering\n- **Tuition:** ~€2,000–€3,000/semester for non-EU students (public technical university).\n- **Minimum CGPA:** ~3.2/4.0 from HEC-recognized university.\n- **APS Islamabad Requirement:** Mandatory before visa processing.\n- **Deadline:** May 31 for Winter Intake.\n\n**2. Politecnico di Milano - Italy & DSU Regional Grant**\n- **Program:** M.Sc. Computer Science and Engineering\n- **Tuition:** ~€3,900/year, fully waivable via the DSU Scholarship.\n- **DSU Grant:** Covers full tuition waiver + ~€7,500/year living stipend for eligible Pakistani students.\n- **Deadline:** Universitaly pre-enrolment closes around June/July.\n\n*Live AI search is temporarily unavailable — showing curated verified results.*`,
       sources: [
         { title: "TUM Official International Master Portal", uri: "https://www.tum.de/en/studies/degree-programs" },
         { title: "Politecnico di Milano English Graduate Programs", uri: "https://www.polimi.it/en/international-prospective-students" },
@@ -254,14 +246,20 @@ CRITICAL RESEARCH GUIDELINES:
   }
 
   try {
-    const response = await genAI.models.generateContent({
-      model: DEFAULT_MODEL,
-      contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-        temperature: 0.4,
-      }
-    });
+    const response = await genAI.models
+      .generateContent({
+        model: DEFAULT_MODEL,
+        contents: prompt,
+        config: { tools: [{ googleSearch: {} }], temperature: 0.4 }
+      })
+      .catch((err) => {
+        console.warn("Google Search grounding unavailable, retrying without it:", err?.status || err?.message || err);
+        return genAI!.models.generateContent({
+          model: DEFAULT_MODEL,
+          contents: prompt,
+          config: { temperature: 0.4 }
+        });
+      });
 
     const text = response.text || "No results found for this inquiry.";
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
@@ -455,18 +453,23 @@ Feel free to ask about university shortlisting, SOP reviews, blocked accounts, o
     }));
 
     // If Google search is requested, use tools in chat config
-    const chat = genAI.chats.create({
-      model: DEFAULT_MODEL,
-      config: {
-        systemInstruction,
-        temperature: 0.7,
-        ...(useGoogleSearch ? { tools: [{ googleSearch: {} }] } : {})
-      },
-      history: formattedHistory
-    });
+    const send = (withSearch: boolean) =>
+      genAI!.chats
+        .create({
+          model: DEFAULT_MODEL,
+          config: {
+            systemInstruction,
+            temperature: 0.7,
+            ...(withSearch ? { tools: [{ googleSearch: {} }] } : {})
+          },
+          history: formattedHistory
+        })
+        .sendMessage({ message });
 
-    const result = await chat.sendMessage({
-      message
+    const result = await send(useGoogleSearch).catch((err) => {
+      if (!useGoogleSearch) throw err;
+      console.warn("Google Search grounding unavailable, retrying without it:", err?.status || err?.message || err);
+      return send(false);
     });
 
     const reply = result.text || "I apologize, I could not generate a response. Please try again.";
