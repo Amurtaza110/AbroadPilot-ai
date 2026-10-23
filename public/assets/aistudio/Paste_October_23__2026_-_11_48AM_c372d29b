@@ -1,0 +1,1384 @@
+# MASTER PROMPT: Build a Production-Ready AI Study Abroad Consultancy Platform
+
+## 1. Your Role
+
+Act as a senior product architect, full-stack engineer, React Native specialist, AI engineer, UI/UX designer, database architect, cybersecurity engineer, QA engineer, and EdTech startup product strategist.
+
+Your task is to design, implement, test, and document a complete, professional, cross-platform AI-powered Study Abroad Consultancy application focused initially on Pakistani students, with an architecture that can expand internationally.
+
+Do not merely generate a UI mockup, landing page, clickable prototype, or collection of disconnected screens. Build a functional application with a real database, authentication, working navigation, persistent user data, real AI integration, application workflows, document management, and an operational admin interface.
+
+Use AI-assisted development to accelerate implementation, but maintain professional software engineering standards.
+
+**Product mission:** Help students progress from uncertainty about studying abroad to a personalized, organized, evidence-based plan for university admission, scholarships, visa preparation, and departure.
+
+**Working product name:** AbroadPilot AI. Make the brand name configurable.
+
+**Primary market:** Pakistan.
+
+**Primary audience:** Students pursuing bachelor's, master's, MPhil, PhD, exchange, foundation, diploma, and other eligible international study programs.
+
+**Business model:** Freemium student platform with the option to add premium planning tools, verified human consultation, and institutional partnerships later.
+
+**Budget constraint:** Use free and open-source technologies where practical. Avoid mandatory paid services for the core MVP. Clearly disclose any service that requires billing, verification, a paid subscription, or additional credentials.
+
+---
+
+## 2. Non-Negotiable Development Rules
+
+1. Implement a complete end-to-end MVP rather than creating every feature superficially.
+2. Every visible interactive element must work, including buttons, navigation items, search, filters, tabs, forms, upload controls, notifications, and settings.
+3. Do not use fake AI responses, hardcoded loading screens, simulated success messages, or mock API responses in production paths.
+4. Demo data may be included in an explicitly labeled demo mode, but it must never be presented as verified live university or immigration information.
+5. Persist user profiles, saved universities, recommendations, tasks, application statuses, documents metadata, and preferences in the database.
+6. Keep API keys, service-role credentials, and privileged operations on the server.
+7. Validate user inputs on both client and server.
+8. Make loading, empty, offline, permission-denied, rate-limited, and error states clear and usable.
+9. Implement accessible layouts, responsive screens, form validation, and consistent design components.
+10. Do not claim the application is production-ready until its tests, deployment requirements, security configuration, and known limitations have been documented.
+11. If a third-party API is unavailable, implement a working alternative based on verified, maintainable data sources. Never fabricate results.
+12. Prioritize a reliable core product over a long list of unfinished features.
+
+Before coding, inspect the available environment, create a concise implementation plan, and identify the services and credentials required. Then proceed with implementation rather than stopping after presenting a plan.
+
+---
+
+## 3. Technology Stack
+
+Use this default architecture unless a genuine technical limitation requires an alternative.
+
+### Frontend
+
+- React Native
+- Expo
+- TypeScript with strict type checking
+- Expo Router for file-based navigation
+- React Hook Form and Zod for form handling and validation
+- TanStack Query for server-state management
+- A consistent, reusable component system
+- Expo SecureStore where appropriate for supported native secure-storage use cases
+- Accessible icons and platform-appropriate interaction patterns
+
+The application must support Android, iOS, and responsive web through a shared codebase.
+
+Do not implement a website and an unrelated mobile application. Share business logic, validation schemas, API clients, domain models, and reusable UI wherever practical.
+
+### Backend and database
+
+Use Supabase for:
+
+- PostgreSQL database
+- Authentication
+- User profile management
+- Private document storage
+- Row-level security
+- Database migrations
+- Server-side functions or a dedicated backend for privileged operations
+
+Use server-side API routes or Edge Functions for Gemini requests, document-processing operations, and other sensitive workflows.
+
+Never expose the Supabase service-role key or Gemini API key in client-side code.
+
+### AI provider
+
+Use the Gemini Developer API through an interchangeable AI-provider abstraction.
+
+The implementation must support:
+
+- Server-side model selection through configuration
+- Structured JSON output
+- Schema validation of AI responses
+- Request timeouts
+- Retry and backoff policies for transient errors
+- Rate limiting and usage quotas
+- Error handling for unavailable models and exhausted free-tier quotas
+- A provider interface that allows a different model to be integrated later
+
+Do not assume a particular Gemini model name will remain available. Configure a supported model through an environment variable.
+
+### Suggested repository organization
+
+Separate the code into:
+
+- App routes and layouts
+- Reusable UI components
+- Feature modules
+- Domain types and validation schemas
+- API client and server endpoints
+- AI provider and prompts
+- Database migrations and access policies
+- University data ingestion and source adapters
+- Tests
+- Deployment documentation
+
+Keep the application modular, maintainable, and suitable for future contributors.
+
+---
+
+## 4. Product Design and Visual Identity
+
+Create a premium, trustworthy, modern international education platform.
+
+### Visual direction
+
+- Deep navy as the primary brand color
+- Teal or emerald as the accent color
+- Warm white or subtle neutral backgrounds
+- Accessible text contrast
+- Restrained use of gradients
+- Clear typography and consistent spacing
+- Clean cards, structured tables, progress indicators, and elegant charts
+- Professional university photography only where it adds value
+- Subtle animations that do not impair usability
+
+Avoid excessive glassmorphism, distracting gradients, cluttered dashboards, oversized empty cards, and generic AI-generated landing-page aesthetics.
+
+### Responsive behavior
+
+On mobile:
+- Bottom navigation for primary destinations
+- Compact cards and stacked forms
+- Touch-friendly controls
+- Easy document uploads
+- Clear progress indicators
+
+On desktop:
+- Persistent sidebar
+- Wider comparison tables
+- Multi-column dashboards
+- Side-by-side university comparisons
+- A timeline or roadmap view
+- Efficient application management
+
+Use a consistent design system with reusable components, spacing tokens, typography, colors, button variants, input states, card patterns, dialogs, and notifications.
+
+Include light and dark themes if they can be implemented consistently without delaying core functionality.
+
+### Primary navigation
+
+1. Home
+2. Discover
+3. My Roadmap
+4. Applications
+5. Documents
+6. AI Advisor
+7. Profile and Settings
+
+Scholarships, visa preparation, and course discovery should be accessible from relevant sections without creating unnecessarily complicated navigation.
+
+---
+
+## 5. Authentication and Student Onboarding
+
+Implement functional registration, sign-in, sign-out, session restoration, password reset, and account management.
+
+Support email-based authentication initially. Add Google sign-in only if its provider credentials and redirect configuration are properly implemented.
+
+After registration, guide the student through a multi-step onboarding wizard. Allow saving progress and returning later.
+
+### Student profile fields
+
+**Personal and academic profile**
+- Full name
+- Email
+- Nationality
+- Current country of residence
+- City or region in Pakistan
+- Preferred language
+- Current education level
+- Highest completed qualification
+- Degree title and major
+- Institution name
+- Institution recognition or accreditation information, when available
+- CGPA or percentage
+- Grading scale and maximum possible CGPA
+- Graduation year or expected completion date
+- Relevant academic subjects
+- Research interests, where applicable
+- Work experience
+- Publications, projects, or extracurricular achievements, where relevant
+
+**Study preferences**
+- Target degree level
+- Intended subject or program
+- Preferred countries and regions
+- Preferred intake and year
+- Public or private university preference
+- English-taught or other language-taught programs
+- Preferred university type
+- Preferred city or campus environment
+- Online, on-campus, or hybrid preference, if supported
+
+**Budget and funding**
+- Maximum annual tuition budget
+- Maximum total annual budget
+- Currency, defaulting to PKR
+- Funding source
+- Scholarship requirement
+- Full scholarship, partial scholarship, or self-funded preference
+- Family contribution range, if voluntarily provided
+- Financial flexibility
+- Preference for part-time work opportunities, with clear warnings that work rights vary by jurisdiction
+
+**Language and testing**
+- IELTS, TOEFL, PTE, or other test status
+- Test scores and dates
+- Duolingo English Test status, where accepted by the specific institution
+- GRE or GMAT status where relevant
+- Willingness to take additional tests
+
+**Additional considerations**
+- Study gap and explanation, where relevant
+- Application readiness
+- Intended career direction
+- Family or personal constraints voluntarily disclosed
+- Need for assistance with accommodation or accessibility
+
+Collect only necessary information. Sensitive details must be optional unless essential to a specific task. Explain why requested data is needed.
+
+### Onboarding experience
+
+Display a completion indicator, save draft answers, validate fields, allow editing, and provide a clear final review.
+
+On completion, create a personalized initial study-abroad plan and route the student to the dashboard.
+
+The student must be able to update their preferences later. When preferences change, offer to refresh affected recommendations and roadmap tasks rather than silently overwriting existing work.
+
+---
+
+## 6. AI University Discovery and Matching Engine
+
+This is one of the application's most important features.
+
+Create a functional university discovery system that combines structured data filtering, transparent matching logic, and AI-generated explanations.
+
+### Search filters
+
+Allow students to filter by:
+
+- Country and region
+- Degree level
+- Subject and specialization
+- Tuition range
+- Estimated total annual cost
+- Scholarship availability
+- Minimum academic requirements
+- English language requirements
+- Intake and application deadlines
+- University type
+- Program duration
+- Study mode
+- Course language
+- Research or thesis options
+- Admission status, when reliable data exists
+
+Provide sorting by match score, estimated affordability, tuition, deadline, and relevance.
+
+### University recommendation process
+
+1. Validate the student's profile.
+2. Identify programs from the available structured university dataset.
+3. Exclude programs that clearly fail mandatory requirements when those requirements are verified.
+4. Calculate a transparent initial match score using configurable factors.
+5. Use the AI model to interpret the student's preferences and explain trade-offs.
+6. Return structured results validated against a defined schema.
+7. Include supporting source links and the last verification date for important claims.
+8. Allow students to save, compare, dismiss, and revisit recommendations.
+
+### Recommendation categories
+
+Organize results into:
+
+- Strong academic fit
+- Realistic alternatives
+- Budget-friendly options
+- Scholarship-focused options
+- Ambitious or reach options
+- Additional options requiring further eligibility verification
+
+Never guarantee admission, scholarship awards, or visa approval.
+
+### Matching score
+
+Create an explainable 0–100 matching score based on configurable weights for:
+
+- Academic eligibility
+- Program relevance
+- Affordability
+- Scholarship alignment
+- Language requirements
+- Intake timing
+- Student preferences
+
+Display the individual factor scores and explain the result.
+
+Do not present this score as an official university acceptance probability. If important information is missing, show a confidence indicator or mark the recommendation as provisional.
+
+### University result cards
+
+Each result should include:
+
+- University name
+- Country and city
+- Official website
+- Official program page
+- Program title
+- Degree level
+- Tuition and currency
+- Estimated living expenses, where reliable
+- Estimated annual total cost
+- Entry requirements
+- Language requirements
+- Scholarship links
+- Application deadline
+- Intake information
+- Matching score and explanation
+- Data verification status
+- Save and compare actions
+- Add-to-roadmap action
+
+If a field is unknown, display "Not verified" or "Information unavailable." Do not invent tuition, acceptance rates, requirements, or deadlines.
+
+### University comparison
+
+Allow comparison of at least three universities side by side.
+
+Compare academic fit, tuition, living costs, entry requirements, scholarships, application deadlines, program duration, and official links.
+
+Highlight meaningful trade-offs without labeling an institution as objectively best for every student.
+
+---
+
+## 7. Verified University and Program Data
+
+AI alone must not be the source of truth for university admissions requirements.
+
+Build a data-source layer with an explicit source registry and configurable adapters.
+
+Prefer, in order:
+
+1. Official university admissions pages
+2. Official program pages
+3. Official university scholarship pages
+4. Official government immigration and embassy sources
+5. Official recognized qualification and language-testing authorities
+6. Other reputable sources only when official information is unavailable
+
+Where practical, integrate legitimate public APIs, downloadable official datasets, or institution-provided feeds.
+
+Do not assume that all university websites offer APIs. Do not scrape sites in violation of their terms or access restrictions.
+
+### Minimum university data model
+
+Store:
+
+- Institution ID
+- Institution name
+- Country and location
+- Official website
+- Institution description
+- Data source and source URL
+- Last verified timestamp
+- Verification status
+
+### Minimum program data model
+
+Store:
+
+- Program ID
+- Institution ID
+- Program title
+- Degree level
+- Subject category
+- Duration
+- Study mode
+- Tuition amount
+- Tuition currency
+- Tuition period
+- Estimated living expenses, where available
+- Academic entry requirements
+- English language requirements
+- Application deadline
+- Intake dates
+- Scholarship references
+- Official application URL
+- Program source URL
+- Last verified timestamp
+- Data confidence status
+
+Separate annual tuition from total tuition and one-time fees.
+
+Implement a working initial seed dataset for demonstration and testing. Every sample record must be clearly identified as demo data unless independently verified. Provide an admin workflow for importing, editing, verifying, and refreshing real records.
+
+If live information cannot be retrieved, explain the limitation and direct users to the relevant official source. Do not manufacture current information to fill empty cards.
+
+---
+
+## 8. Personalized AI Study Abroad Advisor
+
+Build an AI assistant that understands the student's saved profile and current study-abroad plan.
+
+The assistant must be accessible through a dedicated chat interface and relevant contextual actions throughout the application.
+
+### Supported tasks
+
+- Explain university admission requirements
+- Recommend suitable countries and programs
+- Compare study destinations
+- Estimate application expenses
+- Explain scholarship eligibility
+- Suggest a practical application strategy
+- Identify missing documents
+- Explain academic qualification requirements
+- Help organize a study gap explanation
+- Improve a statement of purpose
+- Review a CV or academic résumé
+- Help draft recommendation-letter request emails
+- Prepare a university inquiry email
+- Explain application portal instructions
+- Prepare interview practice questions
+- Generate personalized next steps
+- Explain visa document checklists using official sources
+- Explain common application mistakes
+
+### AI response requirements
+
+The AI must:
+
+- Use the student's profile only when relevant and authorized.
+- Distinguish verified facts from general guidance.
+- Cite or link to official sources for consequential requirements.
+- State when information is outdated, incomplete, or uncertain.
+- Ask a clarifying question when essential details are missing.
+- Avoid inventing university policies, legal requirements, fees, or deadlines.
+- Offer actionable next steps.
+- Generate structured results for workflows that need to save data.
+- Keep responses concise by default while allowing deeper explanations.
+- Avoid unnecessarily repeating personal information.
+
+Implement a server-side system prompt, structured response schemas, validation, and error handling.
+
+Add safeguards against prompt injection in uploaded documents and external web content.
+
+The AI must never make an official admissions decision, fabricate evidence, create fraudulent financial records, or promise an immigration outcome.
+
+---
+
+## 9. End-to-End Interactive Study Abroad Roadmap
+
+Build a persistent, dynamic roadmap for each student.
+
+The roadmap is not a static infographic. Every milestone must correspond to a database record, a real user action, or a tracked application status.
+
+### Roadmap stages
+
+**Stage 1: Student assessment**
+- Complete profile
+- Review academic history
+- Confirm target degree
+- Set budget
+- Define country and subject preferences
+- Identify missing information
+
+**Stage 2: Destination planning**
+- Compare countries
+- Review tuition and living costs
+- Review relevant study and work rules
+- Consider language requirements
+- Select target destinations
+
+**Stage 3: University shortlist**
+- Discover programs
+- Review official eligibility requirements
+- Compare universities
+- Identify reach, realistic, and budget-friendly options
+- Save a prioritized shortlist
+
+**Stage 4: Funding and scholarships**
+- Search available scholarships
+- Review eligibility
+- Check award amount and coverage
+- Check deadlines
+- Prepare scholarship-specific documents
+- Track submissions and outcomes
+
+**Stage 5: Document preparation**
+- Academic transcripts
+- Certificates and degree documents
+- Passport
+- CV or résumé
+- Statement of purpose
+- Recommendation letters
+- English language results
+- Portfolio or research proposal where applicable
+- Financial documents where required
+- Certified translations or attestations where required
+
+Requirements must be configurable per university, program, scholarship, and destination.
+
+**Stage 6: Admission applications**
+- Review admission requirements
+- Prepare application materials
+- Open the official application portal
+- Record the application reference
+- Track the application status
+- Record submission dates and correspondence
+- Track decisions and additional requests
+
+**Stage 7: Admission and financial decisions**
+- Record offer letters
+- Compare conditional and unconditional offers
+- Review deposits and deadlines
+- Compare scholarships and total costs
+- Track the student's chosen offer
+
+**Stage 8: Visa preparation**
+- Identify the correct visa or residence-permit category from official guidance
+- Verify the official checklist for the destination
+- Track required documents
+- Track financial evidence requirements
+- Track health insurance or medical requirements where applicable
+- Track biometrics, interviews, and appointments where applicable
+- Review official forms and fee information
+- Prepare an interview practice session when relevant
+
+**Stage 9: Pre-departure preparation**
+- Confirm enrollment and required payments
+- Review accommodation
+- Plan travel
+- Review insurance and health arrangements
+- Check permitted travel and arrival documentation
+- Prepare a packing checklist
+- Review practical arrival information
+
+**Stage 10: Arrival and onboarding**
+- Track arrival
+- Record university enrollment steps
+- Track orientation
+- Review local registration requirements where applicable
+- Mark the study-abroad journey as completed
+
+### Roadmap interactions
+
+Each task must support:
+
+- Not started
+- In progress
+- Completed
+- Blocked
+- Not applicable
+
+Allow:
+
+- Start and due dates
+- Priority levels
+- Task descriptions
+- Subtasks
+- Dependencies
+- Supporting documents
+- Related university or scholarship
+- Official reference links
+- Notes
+- Reminders
+- Completion evidence where appropriate
+
+Automatically create a sensible initial roadmap after onboarding and university selection.
+
+Allow students to add, edit, reorder, skip, or delete personal tasks. Preserve application records and completed history when the roadmap is regenerated.
+
+Calculate progress from real task records, not a hardcoded percentage.
+
+Show overdue tasks, upcoming deadlines, blocked tasks, and recommended next actions.
+
+---
+
+## 10. Scholarship Discovery and Tracking
+
+Implement a scholarship search and management module.
+
+Support:
+
+- Government scholarships
+- University scholarships
+- Merit-based awards
+- Need-based awards
+- Research funding
+- Teaching or research assistantships
+- Tuition waivers
+- Country-specific programs
+- Relevant external funding opportunities
+
+For each scholarship, display:
+
+- Scholarship name
+- Provider
+- Eligible destinations
+- Eligible degree levels
+- Academic criteria
+- Nationality requirements
+- Funding coverage
+- Application deadlines
+- Required documents
+- Official source
+- Last verified date
+- Student-specific eligibility status
+
+Use eligibility categories such as:
+
+- Appears eligible based on available information
+- Potentially eligible; more information required
+- Does not appear to meet a verified requirement
+- Not yet assessed
+
+Do not confuse eligibility with the probability of winning an award.
+
+Allow students to save scholarships, create tasks, track application status, and associate awards with their university applications.
+
+Never advertise an expired or unverified scholarship as currently open.
+
+---
+
+## 11. Document Vault and Readiness Checker
+
+Create a secure private document vault.
+
+### Supported functionality
+
+- Upload PDF and image files
+- Rename and categorize documents
+- Associate documents with applications
+- Record issue and expiry dates where relevant
+- Preview supported files
+- Download and delete files
+- Track document status
+- Record whether translation, certification, or attestation may be required
+- Mark documents as verified by the student or reviewed by an authorized adviser
+- Show which documents are missing for each application
+
+Use private storage buckets and short-lived signed URLs. Apply file size limits, file-type validation, and access controls.
+
+Do not make sensitive documents publicly accessible.
+
+### Document readiness
+
+For each selected university, scholarship, or visa process, compare the verified requirement list against the student's available documents.
+
+Show:
+
+- Available
+- Missing
+- Needs update
+- Needs verification
+- Potentially required
+- Not applicable
+
+Requirements must be sourced from the relevant official institution or authority.
+
+Do not treat uploading a document as proof that the document is valid or accepted.
+
+### AI document assistance
+
+Where appropriate, allow AI to extract information from supported documents and help organize them.
+
+Require explicit user consent before processing sensitive files.
+
+Show extracted information for confirmation before saving it.
+
+Do not silently store sensitive information extracted from passports, bank statements, or identity documents. Do not retain unnecessary raw content or send full documents to external AI services without clear disclosure and consent.
+
+Never generate fake transcripts, financial evidence, recommendation letters presented as authentic, or other fraudulent documents.
+
+---
+
+## 12. Destination-Specific Visa Preparation
+
+Build a destination-aware visa preparation module.
+
+Start with a manageable set of destinations selected for the initial market. Make country coverage configurable rather than pretending to support every country from day one.
+
+For each supported destination, provide:
+
+- Relevant student visa or study residence category
+- Official immigration authority
+- Official embassy or consular guidance where relevant
+- Required application forms
+- Passport and identity requirements
+- Admission or enrollment evidence
+- Financial evidence requirements
+- Language requirements where applicable
+- Health insurance or medical requirements where applicable
+- Biometrics and interview steps where applicable
+- Fees and processing information when verified
+- Official appointment and application links
+- A personalized document checklist
+- Source links and last verification dates
+
+The visa checklist must be based on the destination, application location, program, and the student's relevant circumstances.
+
+Do not assume the requirements for all Pakistani applicants are identical. Explain when requirements depend on the responsible embassy, consulate, or individual case.
+
+Keep the official checklist separate from optional supporting documents and general recommendations.
+
+Clearly state that the application provides organizational and educational guidance, not legal representation or a guarantee of visa approval.
+
+If reliable current requirements are unavailable, display a prominent verification notice and link to the official authority rather than inventing a checklist.
+
+---
+
+## 13. Application Management Workspace
+
+Build a dedicated application tracker with a board and list view.
+
+Each application must support:
+
+- University
+- Program
+- Intake
+- Application deadline
+- Official application link
+- Application reference
+- Submission date
+- Current status
+- Required documents
+- Application fee, if verified
+- Scholarship association
+- Notes
+- Contact information for the relevant admissions office when publicly available
+- Relevant tasks and reminders
+- Offer letter or decision records
+
+Suggested statuses:
+
+- Considering
+- Shortlisted
+- Preparing
+- Ready to submit
+- Submitted
+- Under review
+- Additional information requested
+- Interview stage
+- Offer received
+- Waitlisted
+- Rejected
+- Withdrawn
+- Accepted
+- Enrollment confirmed
+
+Support multiple concurrent applications and independent status histories.
+
+Never claim that the platform submitted an application unless a legitimate integration actually completed the submission. In the MVP, provide links to official portals and allow students to update statuses manually.
+
+---
+
+## 14. Smart Calendar and Notifications
+
+Create an in-app calendar and notification center.
+
+Track:
+
+- Admission deadlines
+- Scholarship deadlines
+- Test dates
+- Passport or document expiry
+- Recommendation letter requests
+- Application follow-ups
+- Visa appointments
+- Tuition deposits
+- Pre-departure tasks
+
+Implement:
+
+- In-app notifications
+- Upcoming deadline summaries
+- Overdue task alerts
+- User-controlled reminder preferences
+- Time-zone-aware date handling
+- Notification read/unread state
+
+Use email or push notifications only when the relevant provider is configured.
+
+Do not show a notification as sent if the delivery service has not confirmed it.
+
+Avoid promising background reminders when the chosen deployment environment does not support the required scheduling infrastructure.
+
+---
+
+## 15. Cost Planner and Currency Support
+
+Build a realistic study-abroad financial planner.
+
+Support PKR as the default display currency and allow other currencies.
+
+Estimate costs for:
+
+- Tuition
+- Accommodation
+- Food
+- Transport
+- Health insurance
+- University fees
+- Visa application fees
+- Language tests
+- Document preparation
+- Travel
+- Deposits
+- Initial settlement expenses
+- Emergency reserves
+
+Show separate categories for:
+
+1. Officially sourced costs
+2. Student-entered estimates
+3. AI-assisted estimates
+4. Unknown or unverified costs
+
+Store currency and the date of any exchange-rate conversion.
+
+Do not silently use a hardcoded exchange rate as current. If a reliable live rate source is not configured, let students enter their own conversion rate and label it accordingly.
+
+Allow comparisons between countries and universities based on estimated total cost, not just tuition.
+
+Display a warning that costs vary by location, year, exchange rates, individual circumstances, and institution.
+
+---
+
+## 16. Additional High-Value Features
+
+Implement these after the core university, roadmap, document, and application workflows work correctly.
+
+### A. AI SOP and personal statement assistant
+
+- Structured writing questionnaire
+- Program-specific drafting assistance
+- Grammar and clarity improvements
+- Word count
+- Revision history
+- Student editing and approval
+- Academic integrity safeguards
+
+The assistant must not invent achievements, experiences, awards, or research.
+
+### B. AI CV builder
+
+- Structured education and experience forms
+- Editable CV templates
+- Role- and program-relevant suggestions
+- Export to PDF when the export workflow is fully implemented
+- Clear distinction between student-provided facts and AI suggestions
+
+### C. English proficiency preparation
+
+- Practice questions
+- Speaking practice prompts
+- Writing feedback
+- Study plans
+- Progress tracking
+- Test-specific guidance
+
+Do not represent AI-generated scores as official examination results.
+
+### D. Application email assistant
+
+Generate editable drafts for admissions offices, scholarship providers, supervisors, and recommenders. Never send emails automatically without explicit authorization.
+
+### E. Human adviser integration
+
+Create a scalable foundation for verified consultants to review student plans, provide feedback, and schedule consultations.
+
+Do not fabricate consultant profiles, credentials, reviews, availability, or successful outcomes.
+
+### F. Family-friendly progress sharing
+
+Allow a student to share a limited progress summary with a family member through explicit consent and revocable access. Never expose the document vault by default.
+
+### G. Country comparison assistant
+
+Compare academic fit, total cost, language requirements, work regulations, post-study opportunities, and visa requirements using dated, authoritative sources.
+
+### H. Low-bandwidth mode
+
+Optimize images, minimize unnecessary API calls, cache non-sensitive data appropriately, and make the interface usable on slower connections.
+
+Do not cache private document URLs or sensitive data insecurely.
+
+---
+
+## 17. Student Dashboard
+
+Create a personalized dashboard that answers the question: "What should I do next?"
+
+Display:
+
+- Welcome message
+- Profile completion
+- Roadmap progress
+- Next three recommended actions
+- Upcoming deadlines
+- Saved universities
+- Scholarship shortlist
+- Active applications
+- Missing documents
+- Estimated budget
+- Recent AI advisor activity
+- Alerts requiring attention
+
+Include a clear primary action such as "Continue my roadmap."
+
+Dashboard metrics must come from real database queries. Provide useful empty states for new students.
+
+Do not fill the dashboard with meaningless charts or fake statistics.
+
+---
+
+## 18. Admin Dashboard and Data Management
+
+Create an authenticated admin area with role-based authorization.
+
+Admins should be able to:
+
+- Manage university records
+- Manage programs
+- Manage scholarships
+- Manage country-specific visa checklist templates
+- Update official source URLs
+- Record verification dates
+- Import and export supported datasets
+- Mark records as verified, expired, or needing review
+- View basic application health and AI usage metrics
+- Manage supported destinations
+- Configure platform settings
+- Review reported incorrect information
+- Maintain audit records of important changes
+
+Protect admin routes on the server, not just by hiding frontend links.
+
+Use separate roles such as student, adviser, and admin. Apply least-privilege permissions.
+
+Advisers must only access students who have explicitly granted the required access.
+
+Do not create a public admin registration flow.
+
+Seed initial admin access through a documented, secure setup process.
+
+---
+
+## 19. Database Schema
+
+Create version-controlled database migrations, appropriate indexes, foreign keys, and row-level security policies.
+
+At minimum, implement these entities:
+
+- profiles
+- student_preferences
+- universities
+- programs
+- program_requirements
+- scholarships
+- scholarship_requirements
+- countries
+- visa_requirement_templates
+- data_sources
+- saved_universities
+- student_roadmaps
+- roadmap_tasks
+- student_documents
+- document_requirements
+- applications
+- application_status_history
+- application_documents
+- student_scholarships
+- reminders
+- notifications
+- ai_conversations
+- ai_messages
+- ai_usage_logs
+- adviser_relationships
+- adviser_notes
+- admin_audit_logs
+- user_feedback
+
+Use UUID identifiers where appropriate.
+
+Add created_at and updated_at timestamps to relevant entities.
+
+Maintain a clear distinction between global reference data and private student records.
+
+Use normalized relationships where appropriate and avoid duplicating requirements in ways that make updates inconsistent.
+
+Use transactions for multi-record operations that must remain consistent.
+
+Document how migrations and seed data are applied in development and production.
+
+---
+
+## 20. Security, Privacy, and Reliability
+
+Security is mandatory, especially because the application may handle identity, academic, and financial documents.
+
+Implement:
+
+- Server-side authorization
+- Row-level security for private database records
+- Private storage buckets
+- Short-lived signed URLs
+- Input validation
+- File validation and size restrictions
+- Request rate limiting
+- AI token and usage limits
+- Secure environment variable management
+- Safe error messages
+- Audit logging for privileged actions
+- Account deletion
+- Data export where feasible
+- Session management
+- Protection against unauthorized record access
+- Prompt-injection defenses for external content
+- Appropriate retention and deletion policies
+
+Do not log passwords, API keys, full identity documents, or sensitive financial data.
+
+Before sending information to an external AI provider, disclose the relevant processing and obtain any required consent. Minimize the data sent.
+
+Do not assume that using a free API automatically provides suitable privacy terms for a commercial application.
+
+Provide a privacy policy and terms-of-service template that is clearly marked for legal review before public launch.
+
+Design for applicable Pakistani privacy obligations and the requirements of the countries in which the service operates. Do not claim legal compliance without an appropriate review.
+
+---
+
+## 21. AI Architecture and Prompt Engineering
+
+Build separate AI tasks rather than sending every operation through one enormous prompt.
+
+Recommended AI modules:
+
+1. Student profile interpretation
+2. University matching explanation
+3. Country comparison
+4. Scholarship eligibility explanation
+5. Roadmap generation
+6. Document checklist assistance
+7. SOP writing assistance
+8. CV feedback
+9. Admissions email drafting
+10. Visa checklist explanation
+11. Next-action recommendations
+
+For each module, define:
+
+- Input schema
+- Output schema
+- Required source data
+- Allowed tools
+- Validation rules
+- Failure behavior
+- Logging and usage limits
+
+### University recommendation output
+
+Use a schema conceptually similar to:
+
+{
+  "recommendations": [
+    {
+      "universityId": "verified-dataset-id",
+      "programId": "verified-program-id",
+      "matchScore": 0,
+      "matchReasons": [],
+      "eligibilityConcerns": [],
+      "budgetAssessment": "unknown",
+      "missingInformation": [],
+      "sourceReferences": [],
+      "verificationStatus": "unverified"
+    }
+  ],
+  "profileGaps": [],
+  "nextActions": []
+}
+
+Validate the output before displaying it.
+
+The AI must reference actual program IDs retrieved from the database. It must not invent university IDs, program URLs, or supporting facts.
+
+### Grounded answers
+
+For current admissions, scholarship, and immigration questions:
+
+1. Retrieve relevant source records.
+2. Check their freshness and verification status.
+3. Provide the relevant source material to the model.
+4. Ask the model to distinguish source facts from interpretation.
+5. Validate structured output.
+6. Present citations or direct source links to the student.
+7. Flag missing or conflicting evidence.
+
+Do not claim that an AI model has searched the web or verified a fact when no such retrieval took place.
+
+Cache suitable non-personal reference data to reduce repeated API calls.
+
+---
+
+## 22. API Design
+
+Implement a clear, versionable server-side API.
+
+Representative endpoints:
+
+- GET/PATCH /api/v1/profile
+- POST /api/v1/recommendations
+- GET /api/v1/universities
+- GET /api/v1/universities/:id
+- GET /api/v1/programs
+- GET /api/v1/scholarships
+- GET/POST /api/v1/roadmaps
+- PATCH /api/v1/roadmap-tasks/:id
+- GET/POST /api/v1/applications
+- PATCH /api/v1/applications/:id
+- GET/POST /api/v1/documents
+- GET /api/v1/visa-checklists
+- POST /api/v1/ai/chat
+- POST /api/v1/ai/sop-assistance
+- GET /api/v1/notifications
+
+These are proposed interfaces, not a requirement to create redundant endpoints when a secure and maintainable alternative is preferable.
+
+Use consistent response shapes, authentication checks, pagination, server-side validation, and meaningful HTTP status codes.
+
+Never accept a user ID from the client as proof of authorization.
+
+---
+
+## 23. Error Handling and Graceful Degradation
+
+The app must remain useful when an optional service is unavailable.
+
+Examples:
+
+- If the AI quota is exhausted, show a clear message and continue allowing manual university discovery and roadmap management.
+- If live university data cannot be refreshed, show the last verified timestamp.
+- If document upload fails, preserve the form state and allow retrying.
+- If a reminder provider is not configured, retain the deadline in the in-app calendar.
+- If a currency API is unavailable, use a student-entered conversion rate.
+- If a university requirement is unknown, link to its official page and flag the missing information.
+- If the student is offline, clearly distinguish cached data from current data.
+
+Never report a successful database save, file upload, email delivery, or external application submission unless the corresponding operation actually succeeded.
+
+---
+
+## 24. Testing and Quality Assurance
+
+Create automated tests for important business logic and user workflows.
+
+### Unit tests
+
+Test:
+
+- Profile validation
+- CGPA scale normalization
+- Budget conversions
+- University matching calculations
+- Deadline calculations
+- Eligibility rule evaluation
+- Document readiness
+- Roadmap progress
+- AI response schema validation
+- Authorization decisions
+
+### Integration tests
+
+Test:
+
+- Registration and login
+- Profile creation and updates
+- Database persistence
+- University filtering
+- Recommendation generation
+- Roadmap task updates
+- Private document uploads
+- Application status changes
+- Scholarship tracking
+- AI provider error handling
+
+### End-to-end tests
+
+Verify the following journey:
+
+1. Register a new student.
+2. Complete the academic and preference questionnaire.
+3. Generate university recommendations using actual seeded records.
+4. Inspect a university's verified source information.
+5. Save and compare universities.
+6. Add a university to the application plan.
+7. Generate or initialize the student's roadmap.
+8. Complete a task and verify progress changes.
+9. Upload a document and associate it with an application.
+10. Review a scholarship and add a relevant deadline.
+11. Open the destination's visa preparation workflow.
+12. Sign out and sign in again.
+13. Verify that saved data persists.
+14. Attempt to access another student's private records and confirm access is denied.
+
+Add responsive layout checks and accessibility checks.
+
+Fix failing tests, type errors, build errors, broken routes, and high-severity security issues before declaring the MVP complete.
+
+---
+
+## 25. Deployment and Environment Setup
+
+Provide:
+
+- A complete environment-variable example file containing placeholder values only
+- Database migration instructions
+- Seed data instructions
+- Gemini API setup instructions
+- Supabase setup instructions
+- Local development commands
+- Web deployment instructions
+- Android build instructions
+- iOS build instructions
+- Production environment setup
+- Troubleshooting guidance
+
+Never commit real secrets.
+
+The project must have reproducible setup steps and a working development command.
+
+Use suitable hosting for the frontend and backend. Verify the current limits and requirements of each free-tier provider before relying on it.
+
+Explain any manual setup needed for OAuth, push notifications, email delivery, custom domains, app-store distribution, or production hosting.
+
+A free development environment does not guarantee that public deployment, commercial usage, or app-store distribution will remain free.
+
+---
+
+## 26. Implementation Phases
+
+Build in the following order. Each phase must be functional before progressing.
+
+### Phase 1 — Foundation
+- Project structure
+- Design system
+- Navigation
+- Authentication
+- Database migrations
+- Secure configuration
+- Student profile
+
+### Phase 2 — Core discovery
+- University and program schema
+- Seed data
+- Search and filters
+- University detail screens
+- Source links and verification indicators
+- Save and compare
+
+### Phase 3 — AI engine
+- Server-side Gemini integration
+- Provider abstraction
+- Profile-aware recommendations
+- Structured outputs
+- Error handling and usage limits
+
+### Phase 4 — Roadmap and applications
+- Personalized roadmap
+- Persistent task tracking
+- Application management
+- Deadline calculations
+- Progress dashboard
+
+### Phase 5 — Scholarships and documents
+- Scholarship discovery
+- Scholarship tracker
+- Private document vault
+- Requirement matching
+- Readiness indicators
+
+### Phase 6 — Visa and financial planning
+- Official-source-based destination checklists
+- Visa preparation workflow
+- Cost calculator
+- Currency handling
+- Source freshness controls
+
+### Phase 7 — Completion and deployment
+- Admin dashboard
+- Security verification
+- Automated testing
+- Responsive QA
+- Error-state review
+- Deployment documentation
+
+If the available time is limited, finish the essential workflows in each phase before starting optional features. Do not build ten shallow modules while leaving authentication, data persistence, or AI integration broken.
+
+---
+
+## 27. Definition of Done
+
+The project is not complete until all applicable requirements below are satisfied.
+
+### Functional
+- [ ] The app launches successfully.
+- [ ] Android, iOS, and web support is documented and verified to the extent possible in the available environment.
+- [ ] Authentication and session handling work.
+- [ ] The student profile persists.
+- [ ] University search and filters work.
+- [ ] Recommendations reference actual dataset records.
+- [ ] The configured AI provider returns validated responses.
+- [ ] AI failure does not break core manual workflows.
+- [ ] Students can save and compare universities.
+- [ ] Roadmap tasks persist and update progress.
+- [ ] Applications and deadlines are tracked.
+- [ ] Scholarship records can be saved and tracked.
+- [ ] Documents are stored privately.
+- [ ] Visa checklists display their sources and verification status.
+- [ ] Dashboard information is derived from real user data.
+- [ ] The admin area enforces server-side permissions.
+- [ ] Important workflows have automated tests.
+
+### Security
+- [ ] Client-side code contains no privileged API secrets.
+- [ ] Database policies prevent cross-user access.
+- [ ] Storage permissions are tested.
+- [ ] Input validation is implemented.
+- [ ] Sensitive data is not unnecessarily sent to AI services.
+- [ ] Account deletion and data handling are documented.
+
+### Delivery
+- [ ] No broken routes or knowingly inert buttons remain in core workflows.
+- [ ] No mock response is used as a real AI or live-data result.
+- [ ] Setup and deployment instructions are complete.
+- [ ] Known limitations are documented.
+- [ ] Required credentials and external service dependencies are listed.
+- [ ] Build and test results are reported honestly.
+
+---
+
+## 28. Final Instructions to the AI Coding Agent
+
+Start by examining the development environment and selecting the simplest maintainable architecture that satisfies this specification.
+
+Then:
+
+1. Produce a concise implementation checklist.
+2. Create the actual application files and project configuration.
+3. Implement the database schema, migrations, and security policies.
+4. Build the functional student experience.
+5. Integrate the AI model through a secure server-side service.
+6. Connect real data retrieval and clearly labeled seed data.
+7. Implement the roadmap, document vault, scholarship tracker, and application management.
+8. Add the admin data-management workflow.
+9. Run available tests, type checks, and production builds.
+10. Fix the failures you discover.
+11. Provide exact setup and launch instructions.
+12. Report which features are complete, which require credentials, which could not be verified, and which remain unfinished.
+
+Do not stop after generating a plan or a beautiful homepage. Continue until you have implemented and tested the most important end-to-end workflows.
+
+If a feature cannot be fully implemented because a third-party service, credential, or external approval is unavailable, implement the working parts, provide a clear configuration path, and explain the limitation. Never conceal an unfinished feature behind a polished interface.
+
+**Final objective:** Deliver a secure, polished, responsive, extensible, AI-powered study-abroad platform that Pakistani students can genuinely use to discover appropriate universities, understand eligibility, organize documents, pursue scholarships, manage applications, prepare for visa processes, and track their entire journey from initial planning to arrival.
+
+The result must be a real working software project, not merely a visual prototype or a collection of generated code snippets.

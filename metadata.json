@@ -1,0 +1,8 @@
+{
+  "name": "AbroadPilot AI",
+  "description": "AI-powered Study Abroad Consultancy Platform helping Pakistani and international students discover verified universities, scholarships, roadmaps, document vault, and visa guidance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
