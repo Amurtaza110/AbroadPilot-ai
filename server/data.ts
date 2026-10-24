@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+// Static catalog data, shared types and demo seeds used by the API function.
+// User-specific data is persisted in Netlify Database (see db/schema.ts).
 
 // Data types
 export interface University {
@@ -190,35 +190,10 @@ export interface AuditLog {
   details: string;
 }
 
-export interface UserAccount {
-  id: string;
-  email: string;
-  passwordHash: string;
-  fullName: string;
-  role: 'student' | 'adviser' | 'admin';
-  createdAt: string;
-}
-
-// File persistence
-const DB_DIR = path.resolve(process.cwd(), 'data');
-const DB_FILE = path.join(DB_DIR, 'abroadpilot_db.json');
-
-interface DatabaseSchema {
-  accounts?: Record<string, UserAccount>; // email -> account
-  universities: University[];
-  scholarships: Scholarship[];
-  visaTemplates: VisaTemplate[];
-  profiles: Record<string, StudentProfile>;
-  savedUniversities: Record<string, string[]>; // userId -> universityId[]
-  savedScholarships: Record<string, string[]>; // userId -> scholarshipId[]
-  roadmapTasks: Record<string, RoadmapTask[]>; // userId -> tasks
-  documents: Record<string, StudentDocument[]>; // userId -> documents
-  applications: Record<string, Application[]>; // userId -> applications
-  auditLogs: AuditLog[];
-}
+export type UserRole = 'student' | 'adviser' | 'admin';
 
 // Initial Seeds
-const SEED_UNIVERSITIES: University[] = [
+export const SEED_UNIVERSITIES: University[] = [
   {
     id: "uni-tum-de",
     name: "Technical University of Munich (TUM)",
@@ -647,7 +622,7 @@ const SEED_UNIVERSITIES: University[] = [
   }
 ];
 
-const SEED_SCHOLARSHIPS: Scholarship[] = [
+export const SEED_SCHOLARSHIPS: Scholarship[] = [
   {
     id: "sch-chevening-uk",
     name: "Chevening Scholarship (UK Government)",
@@ -784,7 +759,7 @@ const SEED_SCHOLARSHIPS: Scholarship[] = [
   }
 ];
 
-const SEED_VISA_TEMPLATES: VisaTemplate[] = [
+export const SEED_VISA_TEMPLATES: VisaTemplate[] = [
   {
     countryCode: "DE",
     countryName: "Germany",
@@ -1082,484 +1057,168 @@ export function generateInitialTasks(userId: string, targetCountry: string = "Ge
   ];
 }
 
-// Ensure database file exists
-class DatabaseStore {
-  private data: DatabaseSchema;
+export const DEMO_STUDENT_ID = "student-demo-pk-1";
 
-  constructor() {
-    if (!fs.existsSync(DB_DIR)) {
-      fs.mkdirSync(DB_DIR, { recursive: true });
-    }
+export const DEMO_ACCOUNTS: Record<UserRole, { id: string; fullName: string; email: string }> = {
+  student: { id: DEMO_STUDENT_ID, fullName: "Hamza Tariq", email: "hamza.tariq@example.com" },
+  adviser: { id: "adviser-pk-1", fullName: "Dr. Tariq Mahmood", email: "adviser@abroadpilot.ai" },
+  admin: { id: "admin-pk-1", fullName: "Admissions Board Admin", email: "admin@abroadpilot.ai" }
+};
 
-    if (fs.existsSync(DB_FILE)) {
-      try {
-        const raw = fs.readFileSync(DB_FILE, 'utf-8');
-        this.data = JSON.parse(raw);
-        // Ensure all arrays exist
-        if (!this.data.universities || this.data.universities.length === 0) {
-          this.data.universities = SEED_UNIVERSITIES;
-        }
-        if (!this.data.scholarships || this.data.scholarships.length === 0) {
-          this.data.scholarships = SEED_SCHOLARSHIPS;
-        }
-        if (!this.data.visaTemplates || this.data.visaTemplates.length === 0) {
-          this.data.visaTemplates = SEED_VISA_TEMPLATES;
-        }
-        if (!this.data.profiles) this.data.profiles = {};
-        if (!this.data.accounts) this.data.accounts = this.getDefaultAccounts();
-        if (!this.data.savedUniversities) this.data.savedUniversities = {};
-        if (!this.data.savedScholarships) this.data.savedScholarships = {};
-        if (!this.data.roadmapTasks) this.data.roadmapTasks = {};
-        if (!this.data.documents) this.data.documents = {};
-        if (!this.data.applications) this.data.applications = {};
-        if (!this.data.auditLogs) this.data.auditLogs = [];
-      } catch (err) {
-        console.error("Error reading database file, initializing seeds", err);
-        this.data = this.getDefaultSchema();
-        this.save();
-      }
-    } else {
-      this.data = this.getDefaultSchema();
-      this.save();
-    }
-  }
-
-  private getDefaultSchema(): DatabaseSchema {
-    // Default demo student profile
-    const defaultStudentId = "student-demo-pk-1";
-    const defaultProfile: StudentProfile = {
-      id: defaultStudentId,
-      fullName: "Hamza Tariq",
-      email: "hamza.tariq@example.com",
-      role: "student",
-      phone: "+92 300 1234567",
-      nationality: "Pakistani",
-      residenceCity: "Lahore, Punjab",
-      targetDegree: "Master",
-      intendedMajor: "Computer Science & Artificial Intelligence",
-      preferredCountries: ["Germany", "United Kingdom", "Italy"],
-      currentEducationLevel: "Bachelor (4 Years BS CS)",
-      degreeTitle: "BS Computer Science",
-      institutionName: "FAST-NUCES Lahore",
-      cgpa: 3.35,
-      maxCgpa: 4.0,
-      percentage: 78,
-      graduationYear: 2025,
-      ieltsStatus: "Completed",
-      ieltsScore: 7.0,
-      toeflScore: undefined,
-      duolingoScore: undefined,
-      greScore: undefined,
-      maxTuitionBudgetPkr: 2500000,
-      fundingPreference: "Partial Scholarship + Self",
-      studyGapYears: 0,
-      workExperienceYears: 1,
-      isOnboarded: true,
-      updatedAt: new Date().toISOString()
-    };
-
-    const initialTasks = generateInitialTasks(defaultStudentId, "Germany");
-
-    const initialDocs: StudentDocument[] = [
-      {
-        id: "doc-1",
-        userId: defaultStudentId,
-        name: "Official_Bachelor_Transcript_FAST.pdf",
-        category: "Transcript",
-        fileType: "application/pdf",
-        fileSize: 1420000,
-        uploadedAt: "2026-04-10T10:30:00Z",
-        status: "attested",
-        notes: "Attested by HEC Pakistan with QR verification code."
-      },
-      {
-        id: "doc-2",
-        userId: defaultStudentId,
-        name: "IELTS_Academic_TRF_Hamza.pdf",
-        category: "English Test",
-        fileType: "application/pdf",
-        fileSize: 850000,
-        uploadedAt: "2026-04-12T14:15:00Z",
-        status: "verified",
-        notes: "Overall 7.0 (L: 7.5, R: 7.0, W: 6.5, S: 7.0)."
-      },
-      {
-        id: "doc-3",
-        userId: defaultStudentId,
-        name: "Hamza_Tariq_Europass_Resume.pdf",
-        category: "CV",
-        fileType: "application/pdf",
-        fileSize: 420000,
-        uploadedAt: "2026-04-15T09:00:00Z",
-        status: "verified",
-        notes: "Updated with Final Year Project & 1 year software development experience."
-      }
-    ];
-
-    const initialApps: Application[] = [
-      {
-        id: "app-1",
-        userId: defaultStudentId,
-        universityId: "uni-tum-de",
-        universityName: "Technical University of Munich (TUM)",
-        country: "Germany",
-        programTitle: "M.Sc. Informatics (Computer Science)",
-        degreeLevel: "Master",
-        intakeTerm: "Winter 2026",
-        deadline: "2026-05-31",
-        portalUrl: "https://campus.tum.de",
-        applicationRefNo: "TUM-2026-89214",
-        status: "Preparing",
-        feePkr: 0,
-        scholarshipApplied: "DAAD EPOS / TUM Merit Grant",
-        notes: "Waiting for APS certificate issuance to upload on TUMonline.",
-        updatedAt: new Date().toISOString()
-      },
-      {
-        id: "app-2",
-        userId: defaultStudentId,
-        universityId: "uni-polimi-it",
-        universityName: "Politecnico di Milano",
-        country: "Italy",
-        programTitle: "M.Sc. Computer Science and Engineering",
-        degreeLevel: "Master",
-        intakeTerm: "Autumn 2026",
-        deadline: "2026-03-15",
-        portalUrl: "https://www.polimi.it/online-services",
-        applicationRefNo: "POLIMI-MS-4410",
-        status: "Submitted",
-        submissionDate: "2026-03-10",
-        feePkr: 16500,
-        scholarshipApplied: "DSU Regional Grant",
-        notes: "Documents evaluated, awaiting committee outcome in late May.",
-        updatedAt: new Date().toISOString()
-      }
-    ];
-
-    return {
-      universities: SEED_UNIVERSITIES,
-      scholarships: SEED_SCHOLARSHIPS,
-      visaTemplates: SEED_VISA_TEMPLATES,
-      profiles: { [defaultStudentId]: defaultProfile },
-      savedUniversities: { [defaultStudentId]: ["uni-tum-de", "uni-rwth-de", "uni-polimi-it"] },
-      savedScholarships: { [defaultStudentId]: ["sch-daad-epos-de", "sch-italy-dsu"] },
-      roadmapTasks: { [defaultStudentId]: initialTasks },
-      documents: { [defaultStudentId]: initialDocs },
-      applications: { [defaultStudentId]: initialApps },
-      auditLogs: [
-        {
-          id: "log-1",
-          timestamp: new Date().toISOString(),
-          actor: "system",
-          action: "INITIALIZE_DATABASE",
-          details: "Database initialized with verified universities, scholarships, and Pakistan visa guidelines."
-        }
-      ]
-    };
-  }
-
-  private save() {
-    try {
-      fs.writeFileSync(DB_FILE, JSON.stringify(this.data, null, 2), 'utf-8');
-    } catch (err) {
-      console.error("Failed to write database file:", err);
-    }
-  }
-
-  // --- Profile methods ---
-  public getProfile(userId: string): StudentProfile | null {
-    return this.data.profiles[userId] || null;
-  }
-
-  public saveProfile(profile: StudentProfile): StudentProfile {
-    profile.updatedAt = new Date().toISOString();
-    this.data.profiles[profile.id] = profile;
-
-    // Initialize roadmap if not exists
-    if (!this.data.roadmapTasks[profile.id]) {
-      const targetCountry = profile.preferredCountries?.[0] || "Germany";
-      this.data.roadmapTasks[profile.id] = generateInitialTasks(profile.id, targetCountry);
-    }
-
-    this.save();
-    return profile;
-  }
-
-  // --- Universities ---
-  public getUniversities(): University[] {
-    return this.data.universities;
-  }
-
-  public getUniversityById(id: string): University | undefined {
-    return this.data.universities.find(u => u.id === id);
-  }
-
-  public saveUniversity(uni: University): University {
-    const idx = this.data.universities.findIndex(u => u.id === uni.id);
-    if (idx >= 0) {
-      this.data.universities[idx] = uni;
-    } else {
-      this.data.universities.push(uni);
-    }
-    this.save();
-    return uni;
-  }
-
-  // --- Saved Universities ---
-  public getSavedUniversities(userId: string): string[] {
-    return this.data.savedUniversities[userId] || [];
-  }
-
-  public toggleSaveUniversity(userId: string, uniId: string): string[] {
-    if (!this.data.savedUniversities[userId]) {
-      this.data.savedUniversities[userId] = [];
-    }
-    const list = this.data.savedUniversities[userId];
-    const index = list.indexOf(uniId);
-    if (index >= 0) {
-      list.splice(index, 1);
-    } else {
-      list.push(uniId);
-    }
-    this.save();
-    return list;
-  }
-
-  // --- Scholarships ---
-  public getScholarships(): Scholarship[] {
-    return this.data.scholarships;
-  }
-
-  public saveScholarship(sch: Scholarship): Scholarship {
-    const idx = this.data.scholarships.findIndex(s => s.id === sch.id);
-    if (idx >= 0) {
-      this.data.scholarships[idx] = sch;
-    } else {
-      this.data.scholarships.push(sch);
-    }
-    this.save();
-    return sch;
-  }
-
-  public getSavedScholarships(userId: string): string[] {
-    return this.data.savedScholarships[userId] || [];
-  }
-
-  public toggleSaveScholarship(userId: string, scholarshipId: string): string[] {
-    if (!this.data.savedScholarships[userId]) {
-      this.data.savedScholarships[userId] = [];
-    }
-    const list = this.data.savedScholarships[userId];
-    const index = list.indexOf(scholarshipId);
-    if (index >= 0) {
-      list.splice(index, 1);
-    } else {
-      list.push(scholarshipId);
-    }
-    this.save();
-    return list;
-  }
-
-  // --- Visa Templates ---
-  public getVisaTemplates(): VisaTemplate[] {
-    return this.data.visaTemplates;
-  }
-
-  public getVisaTemplate(countryCode: string): VisaTemplate | undefined {
-    return this.data.visaTemplates.find(v => v.countryCode.toLowerCase() === countryCode.toLowerCase());
-  }
-
-  // --- Roadmap Tasks ---
-  public getRoadmapTasks(userId: string): RoadmapTask[] {
-    if (!this.data.roadmapTasks[userId]) {
-      this.data.roadmapTasks[userId] = generateInitialTasks(userId);
-      this.save();
-    }
-    return this.data.roadmapTasks[userId];
-  }
-
-  public updateRoadmapTask(userId: string, task: RoadmapTask): RoadmapTask {
-    const tasks = this.getRoadmapTasks(userId);
-    const idx = tasks.findIndex(t => t.id === task.id);
-    if (idx >= 0) {
-      tasks[idx] = task;
-    } else {
-      tasks.push(task);
-    }
-    this.save();
-    return task;
-  }
-
-  public resetRoadmapTasks(userId: string, targetCountry: string): RoadmapTask[] {
-    this.data.roadmapTasks[userId] = generateInitialTasks(userId, targetCountry);
-    this.save();
-    return this.data.roadmapTasks[userId];
-  }
-
-  // --- Documents ---
-  public getDocuments(userId: string): StudentDocument[] {
-    return this.data.documents[userId] || [];
-  }
-
-  public addDocument(userId: string, doc: StudentDocument): StudentDocument {
-    if (!this.data.documents[userId]) {
-      this.data.documents[userId] = [];
-    }
-    this.data.documents[userId].unshift(doc);
-    this.save();
-    return doc;
-  }
-
-  public deleteDocument(userId: string, docId: string): boolean {
-    if (!this.data.documents[userId]) return false;
-    const len = this.data.documents[userId].length;
-    this.data.documents[userId] = this.data.documents[userId].filter(d => d.id !== docId);
-    this.save();
-    return this.data.documents[userId].length < len;
-  }
-
-  // --- Applications ---
-  public getApplications(userId: string): Application[] {
-    return this.data.applications[userId] || [];
-  }
-
-  public saveApplication(userId: string, app: Application): Application {
-    if (!this.data.applications[userId]) {
-      this.data.applications[userId] = [];
-    }
-    const list = this.data.applications[userId];
-    const idx = list.findIndex(a => a.id === app.id);
-    app.updatedAt = new Date().toISOString();
-    if (idx >= 0) {
-      list[idx] = app;
-    } else {
-      list.unshift(app);
-    }
-    this.save();
-    return app;
-  }
-
-  public deleteApplication(userId: string, appId: string): boolean {
-    if (!this.data.applications[userId]) return false;
-    const prev = this.data.applications[userId].length;
-    this.data.applications[userId] = this.data.applications[userId].filter(a => a.id !== appId);
-    this.save();
-    return this.data.applications[userId].length < prev;
-  }
-
-  // --- Audit Logs ---
-  public logAudit(actor: string, action: string, details: string) {
-    this.data.auditLogs.unshift({
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      actor,
-      action,
-      details
-    });
-    // Keep max 200 logs
-    if (this.data.auditLogs.length > 200) {
-      this.data.auditLogs = this.data.auditLogs.slice(0, 200);
-    }
-    this.save();
-  }
-
-  public getAuditLogs(): AuditLog[] {
-    return this.data.auditLogs;
-  }
-
-  // --- Accounts & Authentication ---
-  public getDefaultAccounts(): Record<string, UserAccount> {
-    return {
-      'hamza.tariq@example.com': {
-        id: 'student-demo-pk-1',
-        email: 'hamza.tariq@example.com',
-        passwordHash: 'password123',
-        fullName: 'Hamza Tariq',
-        role: 'student',
-        createdAt: '2026-01-15T08:00:00Z'
-      },
-      'adviser@abroadpilot.ai': {
-        id: 'adviser-pk-1',
-        email: 'adviser@abroadpilot.ai',
-        passwordHash: 'adviser123',
-        fullName: 'Dr. Tariq Mahmood',
-        role: 'adviser',
-        createdAt: '2026-01-15T08:00:00Z'
-      },
-      'admin@abroadpilot.ai': {
-        id: 'admin-pk-1',
-        email: 'admin@abroadpilot.ai',
-        passwordHash: 'admin123',
-        fullName: 'Admissions Board Admin',
-        role: 'admin',
-        createdAt: '2026-01-15T08:00:00Z'
-      }
-    };
-  }
-
-  public findAccountByEmail(email: string): UserAccount | null {
-    if (!this.data.accounts) this.data.accounts = this.getDefaultAccounts();
-    return this.data.accounts[email.toLowerCase().trim()] || null;
-  }
-
-  public verifyPassword(account: UserAccount, password: string): boolean {
-    return account.passwordHash === password;
-  }
-
-  public createAccount(params: {
-    email: string;
-    password: string;
-    fullName: string;
-    role?: 'student' | 'adviser' | 'admin';
-    residenceCity?: string;
-    targetDegree?: 'Bachelor' | 'Master' | 'PhD' | 'Diploma';
-  }): { account: UserAccount; profile: StudentProfile } {
-    if (!this.data.accounts) this.data.accounts = this.getDefaultAccounts();
-    const emailNorm = params.email.toLowerCase().trim();
-    const id = `user-${Date.now()}`;
-    const role = params.role || 'student';
-
-    const account: UserAccount = {
-      id,
-      email: emailNorm,
-      passwordHash: params.password,
-      fullName: params.fullName,
-      role,
-      createdAt: new Date().toISOString()
-    };
-    this.data.accounts[emailNorm] = account;
-
-    const profile: StudentProfile = {
-      id,
-      fullName: params.fullName,
-      email: emailNorm,
-      role,
-      nationality: 'Pakistani',
-      residenceCity: params.residenceCity || 'Islamabad, Pakistan',
-      targetDegree: params.targetDegree || 'Master',
-      intendedMajor: 'Computer Science & Artificial Intelligence',
-      preferredCountries: ['Germany', 'United Kingdom', 'Italy'],
-      currentEducationLevel: 'Bachelor (4 Years BS CS)',
-      degreeTitle: 'Bachelor of Science',
-      institutionName: 'FAST-NUCES / NUST',
-      cgpa: 3.3,
-      maxCgpa: 4.0,
-      graduationYear: 2025,
-      ieltsStatus: 'Preparing',
-      maxTuitionBudgetPkr: 2500000,
-      fundingPreference: 'Partial Scholarship + Self',
-      studyGapYears: 0,
-      workExperienceYears: 1,
-      isOnboarded: true,
-      updatedAt: new Date().toISOString()
-    };
-
-    this.saveProfile(profile);
-    this.logAudit(params.fullName, "CREATE_ACCOUNT", `New user registered with role: ${role}`);
-    this.save();
-    return { account, profile };
-  }
+export function buildDefaultProfile(params: {
+  id: string;
+  fullName: string;
+  email: string;
+  role: UserRole;
+  residenceCity?: string;
+  targetDegree?: StudentProfile['targetDegree'];
+}): StudentProfile {
+  return {
+    id: params.id,
+    fullName: params.fullName,
+    email: params.email,
+    role: params.role,
+    nationality: 'Pakistani',
+    residenceCity: params.residenceCity || 'Lahore, Pakistan',
+    targetDegree: params.targetDegree || 'Master',
+    intendedMajor: 'Computer Science & Artificial Intelligence',
+    preferredCountries: ['Germany', 'United Kingdom', 'Italy'],
+    currentEducationLevel: 'Bachelor (4 Years BS CS)',
+    degreeTitle: 'Bachelor of Science',
+    institutionName: 'FAST-NUCES / NUST',
+    cgpa: 3.3,
+    maxCgpa: 4.0,
+    graduationYear: 2025,
+    ieltsStatus: 'Preparing',
+    maxTuitionBudgetPkr: 2500000,
+    fundingPreference: 'Partial Scholarship + Self',
+    studyGapYears: 0,
+    workExperienceYears: 1,
+    isOnboarded: true,
+    updatedAt: new Date().toISOString()
+  };
 }
 
-export const db = new DatabaseStore();
+// Full sample workspace for the "Hamza Tariq" demo student
+export function buildDemoStudentSeed() {
+  // Default demo student profile
+  const defaultStudentId = DEMO_STUDENT_ID;
+  const defaultProfile: StudentProfile = {
+    id: defaultStudentId,
+    fullName: "Hamza Tariq",
+    email: "hamza.tariq@example.com",
+    role: "student",
+    phone: "+92 300 1234567",
+    nationality: "Pakistani",
+    residenceCity: "Lahore, Punjab",
+    targetDegree: "Master",
+    intendedMajor: "Computer Science & Artificial Intelligence",
+    preferredCountries: ["Germany", "United Kingdom", "Italy"],
+    currentEducationLevel: "Bachelor (4 Years BS CS)",
+    degreeTitle: "BS Computer Science",
+    institutionName: "FAST-NUCES Lahore",
+    cgpa: 3.35,
+    maxCgpa: 4.0,
+    percentage: 78,
+    graduationYear: 2025,
+    ieltsStatus: "Completed",
+    ieltsScore: 7.0,
+    toeflScore: undefined,
+    duolingoScore: undefined,
+    greScore: undefined,
+    maxTuitionBudgetPkr: 2500000,
+    fundingPreference: "Partial Scholarship + Self",
+    studyGapYears: 0,
+    workExperienceYears: 1,
+    isOnboarded: true,
+    updatedAt: new Date().toISOString()
+  };
 
+  const initialTasks = generateInitialTasks(defaultStudentId, "Germany");
+
+  const initialDocs: StudentDocument[] = [
+    {
+      id: "doc-1",
+      userId: defaultStudentId,
+      name: "Official_Bachelor_Transcript_FAST.pdf",
+      category: "Transcript",
+      fileType: "application/pdf",
+      fileSize: 1420000,
+      uploadedAt: "2026-04-10T10:30:00Z",
+      status: "attested",
+      notes: "Attested by HEC Pakistan with QR verification code."
+    },
+    {
+      id: "doc-2",
+      userId: defaultStudentId,
+      name: "IELTS_Academic_TRF_Hamza.pdf",
+      category: "English Test",
+      fileType: "application/pdf",
+      fileSize: 850000,
+      uploadedAt: "2026-04-12T14:15:00Z",
+      status: "verified",
+      notes: "Overall 7.0 (L: 7.5, R: 7.0, W: 6.5, S: 7.0)."
+    },
+    {
+      id: "doc-3",
+      userId: defaultStudentId,
+      name: "Hamza_Tariq_Europass_Resume.pdf",
+      category: "CV",
+      fileType: "application/pdf",
+      fileSize: 420000,
+      uploadedAt: "2026-04-15T09:00:00Z",
+      status: "verified",
+      notes: "Updated with Final Year Project & 1 year software development experience."
+    }
+  ];
+
+  const initialApps: Application[] = [
+    {
+      id: "app-1",
+      userId: defaultStudentId,
+      universityId: "uni-tum-de",
+      universityName: "Technical University of Munich (TUM)",
+      country: "Germany",
+      programTitle: "M.Sc. Informatics (Computer Science)",
+      degreeLevel: "Master",
+      intakeTerm: "Winter 2026",
+      deadline: "2026-05-31",
+      portalUrl: "https://campus.tum.de",
+      applicationRefNo: "TUM-2026-89214",
+      status: "Preparing",
+      feePkr: 0,
+      scholarshipApplied: "DAAD EPOS / TUM Merit Grant",
+      notes: "Waiting for APS certificate issuance to upload on TUMonline.",
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: "app-2",
+      userId: defaultStudentId,
+      universityId: "uni-polimi-it",
+      universityName: "Politecnico di Milano",
+      country: "Italy",
+      programTitle: "M.Sc. Computer Science and Engineering",
+      degreeLevel: "Master",
+      intakeTerm: "Autumn 2026",
+      deadline: "2026-03-15",
+      portalUrl: "https://www.polimi.it/online-services",
+      applicationRefNo: "POLIMI-MS-4410",
+      status: "Submitted",
+      submissionDate: "2026-03-10",
+      feePkr: 16500,
+      scholarshipApplied: "DSU Regional Grant",
+      notes: "Documents evaluated, awaiting committee outcome in late May.",
+      updatedAt: new Date().toISOString()
+    }
+  ];
+
+
+  return {
+    profile: defaultProfile,
+    tasks: initialTasks,
+    documents: initialDocs,
+    applications: initialApps,
+    savedUniversityIds: ["uni-tum-de", "uni-rwth-de", "uni-polimi-it"],
+    savedScholarshipIds: ["sch-daad-epos-de", "sch-italy-dsu"]
+  };
+}
