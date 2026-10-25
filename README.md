@@ -32,6 +32,12 @@ AbroadPilot AI simplifies and modernizes the international education journey for
   - Discover fully and partially funded scholarships (DAAD, Chevening, Erasmus Mundus, Fulbright, Australia Awards, and university-specific grants).
   - Filter by country, degree level, and funding type.
 
+- **⚡ Auto-Apply Agent & Deadline Radar**:
+  - Autonomous portal monitor tracking intake deadlines (Fall/Winter) with real-time countdown clocks.
+  - Multi-document dossier compiler generating ready-to-submit application packages.
+  - 1-click **Calendar Sync (`.ics`)** generating reminders for Google, Apple, and Outlook calendars.
+  - Live autonomous portal verification feed validating prerequisite criteria (ECTS, GPA, English test minimums).
+
 - **🗄️ Document Vault & Verification**:
   - Organized checklist for Statements of Purpose (SOP), Letters of Recommendation (LOR), Transcripts, Financial/Bank statements, and Test scores.
   - Visual status tracking (Not Started, In Progress, Ready, Verified).

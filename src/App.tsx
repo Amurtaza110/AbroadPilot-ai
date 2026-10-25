@@ -21,6 +21,7 @@ import { CostPlanner } from './pages/CostPlanner';
 import { Profile } from './pages/Profile';
 import { SopStudio } from './pages/SopStudio';
 import { VisaInterview } from './pages/VisaInterview';
+import { AutoApplyAgent } from './pages/AutoApplyAgent';
 
 // Layout
 import { Layout } from './components/Layout';
@@ -100,6 +101,7 @@ function AppRouter() {
         <Route path="/advisor" element={<AiAdvisor />} />
         <Route path="/discover" element={<Discover />} />
         <Route path="/applications" element={<Applications />} />
+        <Route path="/auto-apply" element={<AutoApplyAgent />} />
         <Route path="/scholarships" element={<Scholarships />} />
         <Route path="/roadmap" element={<Roadmap />} />
         <Route path="/documents" element={<Documents />} />

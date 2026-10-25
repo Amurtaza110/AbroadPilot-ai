@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { to: '/advisor', icon: <Bot className="w-4 h-4" />, label: 'AI Advisor', badge: 'AI' },
   { to: '/discover', icon: <Compass className="w-4 h-4" />, label: 'Discover' },
   { to: '/applications', icon: <FileText className="w-4 h-4" />, label: 'Applications' },
+  { to: '/auto-apply', icon: <Zap className="w-4 h-4" />, label: 'Auto-Apply Agent', badge: 'PILOT' },
   { to: '/scholarships', icon: <Award className="w-4 h-4" />, label: 'Scholarships' },
   { to: '/roadmap', icon: <Map className="w-4 h-4" />, label: 'My Roadmap' },
   { to: '/documents', icon: <FolderOpen className="w-4 h-4" />, label: 'Documents' },
@@ -74,14 +75,22 @@ export const Layout: React.FC = () => {
       </nav>
 
       {/* Agent Status Banner */}
-      <div className="mx-3 mb-3 p-3 rounded-xl bg-gradient-to-r from-accent-600/20 to-brand-600/20 border border-accent-500/20">
+      <div
+        onClick={() => {
+          navigate('/auto-apply');
+          setSidebarOpen(false);
+        }}
+        className="mx-3 mb-3 p-3 rounded-xl bg-gradient-to-r from-accent-600/20 to-brand-600/20 border border-accent-500/20 hover:border-accent-500/40 cursor-pointer transition-all group"
+      >
         <div className="flex items-center gap-2 mb-1">
-          <Zap className="w-3.5 h-3.5 text-accent-400" />
+          <Zap className="w-3.5 h-3.5 text-accent-400 group-hover:scale-110 transition-transform" />
           <span className="text-xs font-bold text-accent-300">Auto-Apply Agent</span>
-          <span className="ml-auto text-[9px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full font-bold">SOON</span>
+          <span className="ml-auto text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-bold animate-pulse">
+            LIVE
+          </span>
         </div>
         <p className="text-[11px] text-slate-400 leading-relaxed">
-          AI agent that monitors portals & auto-applies for you.
+          Autonomous dossier compilation & deadline monitoring radar.
         </p>
       </div>
 
