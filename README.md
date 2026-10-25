@@ -36,6 +36,16 @@ AbroadPilot AI simplifies and modernizes the international education journey for
   - Organized checklist for Statements of Purpose (SOP), Letters of Recommendation (LOR), Transcripts, Financial/Bank statements, and Test scores.
   - Visual status tracking (Not Started, In Progress, Ready, Verified).
 
+- **✍️ AI SOP & Essay Studio**:
+  - Dual-mode drafting and rubric evaluation engine.
+  - Tailors Statements of Purpose according to word limit, university research labs, and academic tone.
+  - Admissions committee rubric scoring (0-100) on Academic Fit, Storytelling, Research Depth, and Grammar with actionable revision pointers.
+
+- **🎙️ Consular Mock Visa Interview Agent**:
+  - Live conversational simulation tailored to USA (F-1), UK, Germany, Canada, and Australia consular regulations.
+  - Audio integration using Web Speech synthesis and recognition.
+  - Real-time scoring, immigration intent risk detection, and model answers.
+
 - **🛂 Country-Specific Visa Guides**:
   - Step-by-step visa application processes, interview tips, financial proof requirements, and checklist items for major destinations.
 
@@ -124,6 +134,24 @@ Preview the production build locally:
 ```bash
 npm run preview
 ```
+
+---
+
+## 🌐 Cloud Deployment
+
+Pre-configured SPA routing configs are included for both **Vercel** (`vercel.json`) and **Netlify** (`netlify.toml`):
+
+### Deploy to Vercel
+1. Import repository on [Vercel](https://vercel.com/new).
+2. Framework Preset: **Vite**.
+3. Add Environment Variables (`VITE_GEMINI_API_KEY`, `VITE_FIREBASE_*`).
+4. Click **Deploy**.
+
+### Deploy to Netlify
+1. Connect repository on [Netlify](https://app.netlify.com/start).
+2. Build command: `npm run build` | Publish directory: `dist`.
+3. Add Environment Variables in Site Settings.
+4. Click **Deploy Site**.
 
 ---
 

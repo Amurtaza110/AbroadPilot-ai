@@ -19,6 +19,8 @@ import { Documents } from './pages/Documents';
 import { VisaGuide } from './pages/VisaGuide';
 import { CostPlanner } from './pages/CostPlanner';
 import { Profile } from './pages/Profile';
+import { SopStudio } from './pages/SopStudio';
+import { VisaInterview } from './pages/VisaInterview';
 
 // Layout
 import { Layout } from './components/Layout';
@@ -101,7 +103,9 @@ function AppRouter() {
         <Route path="/scholarships" element={<Scholarships />} />
         <Route path="/roadmap" element={<Roadmap />} />
         <Route path="/documents" element={<Documents />} />
+        <Route path="/sop-studio" element={<SopStudio />} />
         <Route path="/visa" element={<VisaGuide />} />
+        <Route path="/visa-interview" element={<VisaInterview />} />
         <Route path="/cost-planner" element={<CostPlanner />} />
         <Route path="/profile" element={<Profile />} />
       </Route>

@@ -12,7 +12,7 @@ import { useToast } from '../contexts/ToastContext';
 type Mode = 'login' | 'register' | 'forgot';
 
 export const Login: React.FC = () => {
-  const { loginWithEmail, loginWithGoogle, registerWithEmail, resetPassword } = useAuth();
+  const { loginWithEmail, loginWithGoogle, registerWithEmail, resetPassword, loginDemo } = useAuth();
   const { showToast } = useToast();
 
   const [mode, setMode] = useState<Mode>('login');
@@ -340,6 +340,34 @@ export const Login: React.FC = () => {
               </div>
             </form>
           )}
+
+          {/* Quick Demo Preview Option */}
+          <div className="pt-2 border-t border-slate-800/80">
+            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-3 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-400">Quick Preview:</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">Instant Access</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => { loginDemo(true); showToast('Loaded Demo Student profile with sample applications!', 'info'); }}
+                  className="px-3 py-2 text-xs font-semibold rounded-lg bg-surface-800 hover:bg-surface-700 text-slate-200 border border-slate-700/60 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+                  Explore Full App
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { loginDemo(false); showToast('Starting 5-Step Onboarding Wizard...', 'info'); }}
+                  className="px-3 py-2 text-xs font-semibold rounded-lg bg-surface-800 hover:bg-surface-700 text-slate-200 border border-slate-700/60 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <GraduationCap className="w-3.5 h-3.5 text-blue-400" />
+                  Try Onboarding
+                </button>
+              </div>
+            </div>
+          </div>
 
           {/* Mode Toggle */}
           {mode !== 'forgot' && (

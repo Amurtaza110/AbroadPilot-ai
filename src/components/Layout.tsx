@@ -8,7 +8,7 @@ import {
   Plane, LayoutDashboard, Compass, GraduationCap, Award,
   FileText, FolderOpen, Map, Calculator, ShieldCheck,
   Bot, Settings, LogOut, Menu, X, User, ChevronDown,
-  Bell, Sparkles, Zap
+  Bell, Sparkles, Zap, PenTool, Mic
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -21,7 +21,9 @@ const NAV_ITEMS = [
   { to: '/scholarships', icon: <Award className="w-4 h-4" />, label: 'Scholarships' },
   { to: '/roadmap', icon: <Map className="w-4 h-4" />, label: 'My Roadmap' },
   { to: '/documents', icon: <FolderOpen className="w-4 h-4" />, label: 'Documents' },
+  { to: '/sop-studio', icon: <PenTool className="w-4 h-4" />, label: 'SOP Studio', badge: 'AI' },
   { to: '/visa', icon: <ShieldCheck className="w-4 h-4" />, label: 'Visa Guide' },
+  { to: '/visa-interview', icon: <Mic className="w-4 h-4" />, label: 'Mock Interview', badge: 'AI' },
   { to: '/cost-planner', icon: <Calculator className="w-4 h-4" />, label: 'Cost Planner' },
 ];
 
