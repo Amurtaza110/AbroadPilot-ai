@@ -177,17 +177,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await signInWithEmailAndPassword(auth, email, password);
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: getFirebaseErrorMessage(err.code) };
+      console.error('Email Login Error:', err);
+      return { success: false, error: getFirebaseErrorMessage(err.code, err.message) };
     }
   };
 
   const loginWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithPopup(auth, provider);
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: getFirebaseErrorMessage(err.code) };
+      console.error('Google Sign-In Error:', err);
+      return { success: false, error: getFirebaseErrorMessage(err.code, err.message) };
     }
   };
 
@@ -197,7 +200,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await updateProfile(cred.user, { displayName: fullName });
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: getFirebaseErrorMessage(err.code) };
+      console.error('Email Registration Error:', err);
+      return { success: false, error: getFirebaseErrorMessage(err.code, err.message) };
     }
   };
 
@@ -324,17 +328,21 @@ export const useAuth = () => {
 
 // ─── Helpers ──────────────────────────────────────────────────
 
-function getFirebaseErrorMessage(code: string): string {
+function getFirebaseErrorMessage(code: string, rawMessage?: string): string {
   const messages: Record<string, string> = {
+    'auth/operation-not-allowed': 'Google Sign-In is not enabled yet in your Firebase Console. Go to Authentication > Sign-in method and enable Google.',
+    'auth/unauthorized-domain': 'This domain is not authorized in Firebase. Add localhost or your domain in Firebase Console > Authentication > Settings > Authorized domains.',
+    'auth/popup-blocked': 'Sign-in popup was blocked by your browser. Please allow popups for this site.',
+    'auth/popup-closed-by-user': 'Google sign-in popup was closed before completing.',
+    'auth/cancelled-popup-request': 'Only one sign-in popup can be open at a time.',
     'auth/user-not-found': 'No account found with this email address.',
     'auth/wrong-password': 'Incorrect password. Please try again.',
     'auth/email-already-in-use': 'An account already exists with this email.',
     'auth/weak-password': 'Password must be at least 6 characters.',
     'auth/invalid-email': 'Please enter a valid email address.',
     'auth/too-many-requests': 'Too many failed attempts. Please wait before trying again.',
-    'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
-    'auth/network-request-failed': 'Network error. Please check your connection.',
+    'auth/network-request-failed': 'Network error. Please check your internet connection.',
     'auth/invalid-credential': 'Invalid email or password.',
   };
-  return messages[code] || 'An unexpected error occurred. Please try again.';
+  return messages[code] || (rawMessage ? `${rawMessage} (${code})` : `Error (${code || 'unknown'}). Please check Firebase configuration.`);
 }
