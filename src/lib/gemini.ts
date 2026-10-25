@@ -12,8 +12,8 @@ if (API_KEY) {
   genAI = new GoogleGenAI({ apiKey: API_KEY });
 }
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
-const GEMINI_PRO_MODEL = 'gemini-2.0-flash-thinking-exp';
+const GEMINI_MODEL = 'gemini-flash-latest';
+const GEMINI_PRO_MODEL = 'gemini-pro-latest';
 
 // ─── System Prompt Builder ────────────────────────────────────
 
