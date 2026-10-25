@@ -100,16 +100,34 @@ export async function streamChat(
   ];
 
   try {
-    const result = await genAI.models.generateContentStream({
-      model: GEMINI_MODEL,
-      contents,
-      config: {
-        systemInstruction,
-        ...(useWebSearch ? { tools: [{ googleSearch: {} }] } : {}),
-        temperature: 0.7,
-        maxOutputTokens: 4096,
+    let result;
+    try {
+      result = await genAI.models.generateContentStream({
+        model: GEMINI_MODEL,
+        contents,
+        config: {
+          systemInstruction,
+          ...(useWebSearch ? { tools: [{ googleSearch: {} }] } : {}),
+          temperature: 0.7,
+          maxOutputTokens: 4096,
+        }
+      });
+    } catch (initialErr: any) {
+      // If search grounding or initial call hit rate limits/unsupported tools, retry with standard generation
+      if (useWebSearch) {
+        result = await genAI.models.generateContentStream({
+          model: GEMINI_MODEL,
+          contents,
+          config: {
+            systemInstruction,
+            temperature: 0.7,
+            maxOutputTokens: 4096,
+          }
+        });
+      } else {
+        throw initialErr;
       }
-    });
+    }
 
     let sources: GroundingSource[] = [];
     let searchQueries: string[] = [];
@@ -145,8 +163,13 @@ export async function streamChat(
     onChunk({ text: '', done: true, sources, searchQueries });
   } catch (error: any) {
     console.error('Gemini chat error:', error);
+    const isRateLimit = error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED') || error.message?.includes('quota');
+    const msg = isRateLimit
+      ? '\n\n⏳ **Google AI Studio Rate Limit**: Your free API key is currently experiencing high request volume. Please wait 30 seconds and send your query again.'
+      : `\n\n⚠️ AI advisor message: ${error.message || 'Unable to connect to model'}. Please try again shortly.`;
+
     onChunk({
-      text: `\n\n⚠️ AI error: ${error.message || 'Unknown error'}. Please try again.`,
+      text: msg,
       done: true,
     });
   }
