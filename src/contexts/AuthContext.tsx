@@ -11,6 +11,8 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
@@ -141,6 +143,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoading(false);
       return;
     }
+
+    // Check for redirect sign-in result on page return
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result?.user) {
+          setIsDemoUser(false);
+          await loadProfile(result.user);
+        }
+      })
+      .catch((err) => {
+        console.error('Redirect sign-in error:', err);
+      });
+
     const unsub = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
       if (user) {
@@ -189,7 +204,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await signInWithPopup(auth, provider);
       return { success: true };
     } catch (err: any) {
-      console.error('Google Sign-In Error:', err);
+      console.error('Google Sign-In Popup Error:', err);
+      // If popup was blocked or closed or cross-origin restrictions apply, seamlessly fall back to redirect
+      if (
+        err.code === 'auth/popup-blocked' ||
+        err.code === 'auth/cancelled-popup-request' ||
+        err.code === 'auth/popup-closed-by-user'
+      ) {
+        try {
+          const provider = new GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: 'select_account' });
+          await signInWithRedirect(auth, provider);
+          return { success: true };
+        } catch (redirectErr: any) {
+          return { success: false, error: getFirebaseErrorMessage(redirectErr.code, redirectErr.message) };
+        }
+      }
       return { success: false, error: getFirebaseErrorMessage(err.code, err.message) };
     }
   };
