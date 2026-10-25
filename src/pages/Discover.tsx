@@ -1,462 +1,227 @@
-import React, { useState, useEffect, useMemo } from 'react';
+// ============================================================
+// Discover Page — AI-Powered University Search
+// ============================================================
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  Search,
-  Filter,
-  GraduationCap,
-  Scale,
-  Sparkles,
-  ShieldCheck,
-  Check,
-  X,
-  SlidersHorizontal,
-  DollarSign,
-  Globe
+  Search, Sparkles, GraduationCap, Globe, DollarSign,
+  ExternalLink, Bot, Filter, Loader2, BookOpen, Award
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { University, Program, convertToPkr, formatCurrencyPkr } from '../types';
-import { UniversityCard } from '../components/UniversityCard';
-import { CompareModal } from '../components/CompareModal';
-import { AiMatchModal } from '../components/AiMatchModal';
-import { ApplicationModal } from '../components/ApplicationModal';
-import { LiveSearchModal } from '../components/LiveSearchModal';
-import { useToast } from '../context/ToastContext';
+import { useAuth } from '../contexts/AuthContext';
+import { streamChat } from '../lib/gemini';
 
-interface DiscoverProps {
-  searchQuery: string;
+interface UniversityResult {
+  name: string;
+  country: string;
+  program: string;
+  tuition: string;
+  deadline: string;
+  url?: string;
+  scholarship?: string;
+  requirements?: string;
+  why?: string;
 }
 
-export const Discover: React.FC<DiscoverProps> = ({ searchQuery }) => {
-  const { user } = useAuth();
-  const { showToast } = useToast();
+export const Discover: React.FC = () => {
+  const { profile } = useAuth();
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const [universities, setUniversities] = useState<University[]>([]);
-  const [savedIds, setSavedIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const quickSearches = [
+    `Best universities for ${profile?.intendedMajors?.[0] || 'Computer Science'} in ${profile?.preferredCountries?.[0] || 'Germany'}`,
+    `Fully funded scholarships for ${profile?.targetDegree || 'Masters'} students from ${profile?.nationality || 'international students'}`,
+    `Top affordable programs for ${profile?.intendedMajors?.[0] || 'Data Science'} in Europe under $15,000/year`,
+    'Public universities in Germany with English-taught Master programs',
+    'Best universities in Canada for international students with scholarships',
+  ];
 
-  // Filters
-  const [selectedCountry, setSelectedCountry] = useState<string>('All');
-  const [selectedDegree, setSelectedDegree] = useState<string>('All');
-  const [selectedSubject, setSelectedSubject] = useState<string>('All');
-  const [tuitionFreeOnly, setTuitionFreeOnly] = useState<boolean>(false);
-  const [maxBudgetPkr, setMaxBudgetPkr] = useState<number>(4000000);
-  const [sortBy, setSortBy] = useState<'match' | 'tuitionAsc' | 'ranking' | 'name'>('match');
+  const handleSearch = async (searchQuery?: string) => {
+    const q = searchQuery || query;
+    if (!q.trim() || loading) return;
 
-  // Comparison State
-  const [comparedUnis, setComparedUnis] = useState<University[]>([]);
-  const [showCompareModal, setShowCompareModal] = useState(false);
+    setLoading(true);
+    setHasSearched(true);
+    setResults('');
 
-  // AI Match Modal State
-  const [activeMatchModal, setActiveMatchModal] = useState<{ uni: University; prog: Program } | null>(null);
+    const enhancedQuery = profile?.isOnboarded
+      ? `${q}\n\nContext: Student profile — ${profile.targetDegree} seeker in ${profile.intendedMajors.join(', ')}, CGPA ${profile.cgpa}/${profile.maxCgpa}, Budget: $${profile.maxTuitionBudgetUsd}/year, Nationality: ${profile.nationality}. Show results relevant to this profile.`
+      : q;
 
-  // Application Modal State
-  const [activeAppModal, setActiveAppModal] = useState<{ uni: University; prog: Program } | null>(null);
-
-  // Live Google Search Modal State
-  const [showLiveSearchModal, setShowLiveSearchModal] = useState(false);
-
-  const fetchUniversities = async () => {
-    try {
-      const res = await fetch('/api/v1/universities');
-      const data = await res.json();
-      if (data.success) {
-        setUniversities(data.universities || []);
-        setSavedIds(data.savedUniversityIds || []);
+    await streamChat(
+      enhancedQuery,
+      { useWebSearch: true, profile },
+      (chunk) => {
+        if (!chunk.done) setResults(prev => prev + chunk.text);
+        else setLoading(false);
       }
-    } catch (err) {
-      console.error('Failed to load universities:', err);
-    } finally {
-      setLoading(false);
-    }
+    );
+    setLoading(false);
   };
 
-  useEffect(() => {
-    fetchUniversities();
-  }, []);
-
-  const handleToggleSave = async (id: string) => {
-    try {
-      const res = await fetch(`/api/v1/universities/${id}/toggle-save`, {
-        method: 'POST'
-      });
-      const data = await res.json();
-      if (data.success) {
-        setSavedIds(data.savedUniversityIds);
-        const isNowSaved = data.savedUniversityIds.includes(id);
-        showToast(isNowSaved ? "Added to your Saved Universities" : "Removed from Saved Universities", "info");
+  const renderResults = (text: string) => {
+    return text.split('\n').map((line, i) => {
+      if (line.startsWith('# ')) return <h2 key={i} className="text-lg font-black text-white mt-4 mb-2">{line.slice(2)}</h2>;
+      if (line.startsWith('## ')) return <h3 key={i} className="text-base font-bold text-brand-300 mt-3 mb-1.5">{line.slice(3)}</h3>;
+      if (line.startsWith('### ')) return <h4 key={i} className="text-sm font-bold text-white mt-2 mb-1">{line.slice(4)}</h4>;
+      if (line.startsWith('- ') || line.startsWith('• ')) {
+        const content = line.slice(2);
+        const parts = content.split(/\*\*(.*?)\*\*/g);
+        return (
+          <li key={i} className="ml-5 text-sm text-slate-300 leading-relaxed">
+            {parts.map((p, j) => j % 2 === 1 ? <strong key={j} className="text-white">{p}</strong> : p)}
+          </li>
+        );
       }
-    } catch (err) {
-      console.error('Toggle save error:', err);
-    }
-  };
-
-  const handleToggleCompare = (uni: University) => {
-    const exists = comparedUnis.some(u => u.id === uni.id);
-    if (exists) {
-      setComparedUnis(prev => prev.filter(u => u.id !== uni.id));
-      showToast(`Removed ${uni.name} from comparison`, "info");
-    } else {
-      if (comparedUnis.length >= 3) {
-        showToast("You can compare up to 3 universities simultaneously", "warning");
-        return;
-      }
-      setComparedUnis(prev => [...prev, uni]);
-      showToast(`Added ${uni.name} to comparison`, "success");
-    }
-  };
-
-  const handleCreateApplication = async (appData: any) => {
-    try {
-      const res = await fetch('/api/v1/applications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(appData)
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast(`Tracked application for ${appData.universityName}`, "success");
-      }
-    } catch (err) {
-      console.error('Failed to create application:', err);
-    }
-  };
-
-  // Filter & sort logic
-  const filteredUniversities = useMemo(() => {
-    return universities.filter(u => {
-      // Search term
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        const matchesUni = u.name.toLowerCase().includes(q) || u.country.toLowerCase().includes(q) || u.city.toLowerCase().includes(q);
-        const matchesProg = u.programs.some(p => p.title.toLowerCase().includes(q) || p.subjectArea.toLowerCase().includes(q));
-        if (!matchesUni && !matchesProg) return false;
-      }
-
-      // Country
-      if (selectedCountry !== 'All' && u.country !== selectedCountry) {
-        return false;
-      }
-
-      // Degree Level
-      if (selectedDegree !== 'All') {
-        const hasDegree = u.programs.some(p => p.degreeLevel === selectedDegree);
-        if (!hasDegree) return false;
-      }
-
-      // Subject
-      if (selectedSubject !== 'All') {
-        const hasSubj = u.programs.some(p => p.subjectArea.toLowerCase().includes(selectedSubject.toLowerCase()));
-        if (!hasSubj) return false;
-      }
-
-      // Tuition Free
-      if (tuitionFreeOnly) {
-        const hasZeroTuition = u.programs.some(p => p.tuitionAnnual === 0);
-        if (!hasZeroTuition) return false;
-      }
-
-      // Max Budget PKR
-      if (maxBudgetPkr) {
-        const hasAffordable = u.programs.some(p => {
-          const pkr = convertToPkr(p.tuitionAnnual, p.tuitionCurrency);
-          return pkr <= maxBudgetPkr;
-        });
-        if (!hasAffordable) return false;
-      }
-
-      return true;
-    }).sort((a, b) => {
-      if (sortBy === 'tuitionAsc') {
-        const minA = Math.min(...a.programs.map(p => convertToPkr(p.tuitionAnnual, p.tuitionCurrency)));
-        const minB = Math.min(...b.programs.map(p => convertToPkr(p.tuitionAnnual, p.tuitionCurrency)));
-        return minA - minB;
-      }
-      if (sortBy === 'ranking') {
-        return (a.rankingQs || 999) - (b.rankingQs || 999);
-      }
-      if (sortBy === 'name') {
-        return a.name.localeCompare(b.name);
-      }
-      // default: match score (by popular for pk or ranking)
-      return (b.popularForPakistaniStudents ? 1 : 0) - (a.popularForPakistaniStudents ? 1 : 0);
+      if (line.trim() === '') return <div key={i} className="h-2" />;
+      const parts = line.split(/\*\*(.*?)\*\*/g);
+      return (
+        <p key={i} className="text-sm text-slate-300 leading-relaxed">
+          {parts.map((p, j) => j % 2 === 1 ? <strong key={j} className="text-white font-semibold">{p}</strong> : p)}
+        </p>
+      );
     });
-  }, [universities, searchQuery, selectedCountry, selectedDegree, selectedSubject, tuitionFreeOnly, maxBudgetPkr, sortBy]);
+  };
 
   return (
-    <div className="space-y-6 pb-16">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs bg-teal-50 text-teal-800 font-bold px-2 py-0.5 rounded uppercase">
-              Curated Directory
-            </span>
-            <span className="text-xs text-slate-500 font-medium">100% Verified Admissions Sources</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">
-            Discover Universities & Degree Programs
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Evaluate admission criteria, language prerequisites, and exact PKR costs for Pakistani applicants.
-          </p>
+    <div className="space-y-8 animate-fade-in">
+      {/* Header */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="badge badge-brand"><Sparkles className="w-3 h-3" /> AI + Live Web Search</span>
         </div>
+        <h1 className="text-2xl font-black text-white">Discover Programs</h1>
+        <p className="text-slate-400 text-sm mt-1">Search universities and scholarships with real-time AI-powered web research</p>
+      </div>
 
-        {comparedUnis.length > 0 && (
+      {/* Search Bar */}
+      <div className="card p-6 space-y-4">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            placeholder="e.g. 'Top AI masters programs in Germany with scholarships' or 'Fully funded PhDs in UK'"
+            className="input-dark pl-12 pr-32 py-4 text-sm text-base"
+            disabled={loading}
+          />
           <button
-            onClick={() => setShowCompareModal(true)}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-transform hover:scale-[1.02]"
+            onClick={() => handleSearch()}
+            disabled={!query.trim() || loading}
+            className="absolute right-2 top-1/2 -translate-y-1/2 btn-primary text-xs py-2.5 disabled:opacity-40"
           >
-            <Scale className="w-4 h-4 text-teal-400" />
-            <span>Compare ({comparedUnis.length}) Universities</span>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Sparkles className="w-3.5 h-3.5" /> Search</>}
           </button>
-        )}
+        </div>
+
+        {/* Quick Searches */}
+        <div>
+          <p className="text-xs text-slate-500 mb-2 font-medium">Quick searches:</p>
+          <div className="flex flex-wrap gap-2">
+            {quickSearches.map((q, i) => (
+              <button key={i}
+                onClick={() => { setQuery(q); handleSearch(q); }}
+                disabled={loading}
+                className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-brand-500/40 text-slate-300 hover:text-white rounded-full transition-all disabled:opacity-40">
+                {q}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Google Search Grounding Discovery Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 rounded-2xl p-4 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg border border-teal-800/40">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300 shrink-0">
-            <Globe className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-sm text-white">Cannot find your target university or program?</span>
-              <span className="text-[10px] bg-teal-400/20 text-teal-300 font-bold px-2 py-0.5 rounded-full border border-teal-400/30">
-                Google Search Grounded
-              </span>
+      {/* Results */}
+      {(hasSearched || results) && (
+        <div className="card p-6">
+          {loading && !results && (
+            <div className="flex items-center gap-3 text-slate-400 py-4">
+              <Loader2 className="w-5 h-5 animate-spin text-brand-400" />
+              <span className="text-sm">Searching universities and scholarships with live web data...</span>
             </div>
-            <p className="text-xs text-slate-300 mt-0.5">
-              Query Gemini 3.8 Flash with live Google Search to discover any university, admission benchmarks & deadlines worldwide.
-            </p>
-          </div>
+          )}
+
+          {results && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-800">
+                <Sparkles className="w-4 h-4 text-brand-400" />
+                <span className="text-sm font-bold text-white">AI Research Results</span>
+                <span className="badge badge-brand text-[10px] ml-auto">Live Web Search</span>
+              </div>
+              <div className="space-y-0.5">
+                {renderResults(results)}
+                {loading && <span className="inline-block w-0.5 h-4 bg-brand-400 animate-pulse ml-1" />}
+              </div>
+            </div>
+          )}
         </div>
+      )}
 
-        <button
-          onClick={() => setShowLiveSearchModal(true)}
-          className="px-4 py-2 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-slate-950 font-extrabold rounded-xl text-xs flex items-center gap-2 shadow-md shrink-0 transition-all hover:scale-[1.02] active:scale-[0.98]"
-        >
-          <Search className="w-3.5 h-3.5 text-slate-950" />
-          <span>Search Universities with Google AI</span>
-        </button>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
-          {/* Country */}
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Country</label>
-            <select
-              value={selectedCountry}
-              onChange={(e) => setSelectedCountry(e.target.value)}
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-teal-500"
-            >
-              <option value="All">All Destinations</option>
-              <option value="Germany">Germany (APS / Low Fee)</option>
-              <option value="United Kingdom">United Kingdom (CAS / 28-day)</option>
-              <option value="United States">United States (F-1 / STEM OPT)</option>
-              <option value="Italy">Italy (DSU Grant / Affordable)</option>
-              <option value="Turkey">Turkey (Low Cost / English)</option>
-              <option value="Australia">Australia (Subclass 500)</option>
-            </select>
-          </div>
-
-          {/* Degree */}
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Degree Level</label>
-            <select
-              value={selectedDegree}
-              onChange={(e) => setSelectedDegree(e.target.value)}
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-teal-500"
-            >
-              <option value="All">All Degrees</option>
-              <option value="Bachelor">Bachelor (BS / BA)</option>
-              <option value="Master">Master (MS / MSc)</option>
-              <option value="PhD">PhD / Doctorate</option>
-            </select>
-          </div>
-
-          {/* Subject */}
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Subject Field</label>
-            <select
-              value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-teal-500"
-            >
-              <option value="All">All Subjects</option>
-              <option value="Computer">Computer Science & IT</option>
-              <option value="Data">Data Science & AI</option>
-              <option value="Engineering">Engineering & Tech</option>
-              <option value="Business">Business & Finance</option>
-            </select>
-          </div>
-
-          {/* Max Budget (PKR) */}
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-              Max Tuition: {formatCurrencyPkr(maxBudgetPkr)}
-            </label>
-            <input
-              type="range"
-              min={0}
-              max={10000000}
-              step={200000}
-              value={maxBudgetPkr}
-              onChange={(e) => setMaxBudgetPkr(parseInt(e.target.value, 10))}
-              className="w-full accent-teal-600 mt-1"
-            />
-          </div>
-
-          {/* Sort By */}
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Sort Results</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-teal-500"
-            >
-              <option value="match">Highest Pakistani Fit</option>
-              <option value="tuitionAsc">Tuition (Lowest First)</option>
-              <option value="ranking">Global QS Ranking</option>
-              <option value="name">University Name (A-Z)</option>
-            </select>
-          </div>
-
-          {/* Tuition Free Toggle Button */}
-          <div className="flex flex-col justify-end">
-            <button
-              onClick={() => setTuitionFreeOnly(!tuitionFreeOnly)}
-              className={`w-full py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors border ${
-                tuitionFreeOnly
-                  ? 'bg-emerald-600 border-emerald-600 text-white'
-                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <Check className={`w-3.5 h-3.5 ${tuitionFreeOnly ? 'block' : 'hidden'}`} />
-              <span>Tuition-Free (0 PKR)</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* University Grid */}
-      {loading ? (
-        <div className="py-20 text-center space-y-3">
-          <div className="w-8 h-8 border-4 border-teal-500/30 border-t-teal-500 rounded-full animate-spin mx-auto" />
-          <p className="text-sm font-semibold text-slate-700">Loading Verified Programs & Prerequisites...</p>
-        </div>
-      ) : filteredUniversities.length === 0 ? (
-        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 space-y-2">
-          <GraduationCap className="w-12 h-12 text-slate-300 mx-auto" />
-          <h3 className="font-bold text-slate-800 text-base">No universities matched your filters</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            Try resetting your budget slider, selecting 'All Destinations', or clearing your search term.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredUniversities.map((uni) => (
-            <UniversityCard
-              key={uni.id}
-              university={uni}
-              profile={user}
-              isSaved={savedIds.includes(uni.id)}
-              isCompared={comparedUnis.some(u => u.id === uni.id)}
-              onToggleSave={handleToggleSave}
-              onToggleCompare={handleToggleCompare}
-              onOpenAiMatch={(u, p) => setActiveMatchModal({ uni: u, prog: p })}
-              onAddToApplications={(u, p) => setActiveAppModal({ uni: u, prog: p })}
-            />
+      {/* Default State */}
+      {!hasSearched && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            {
+              icon: <GraduationCap className="w-6 h-6" />,
+              title: 'University Programs',
+              desc: 'Find English-taught programs matching your profile across 100+ countries',
+              color: 'text-blue-400 bg-blue-400/10',
+              examples: ['TU Munich CS Masters', 'Oxford MBA', 'MIT PhD Programs']
+            },
+            {
+              icon: <Award className="w-6 h-6" />,
+              title: 'Scholarships',
+              desc: 'Discover fully funded and partial scholarships you\'re eligible for',
+              color: 'text-amber-400 bg-amber-400/10',
+              examples: ['DAAD Germany', 'Chevening UK', 'Erasmus Mundus']
+            },
+            {
+              icon: <DollarSign className="w-6 h-6" />,
+              title: 'Cost Comparison',
+              desc: 'Compare costs across countries, cities, and institutions',
+              color: 'text-emerald-400 bg-emerald-400/10',
+              examples: ['Germany vs UK costs', 'Living expenses Paris', 'Cheap tuition Europe']
+            },
+          ].map((card, i) => (
+            <div key={i} className="card p-5 space-y-4">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${card.color}`}>
+                {card.icon}
+              </div>
+              <div>
+                <h3 className="font-bold text-white">{card.title}</h3>
+                <p className="text-sm text-slate-400 mt-1">{card.desc}</p>
+              </div>
+              <div className="space-y-1">
+                {card.examples.map((ex, j) => (
+                  <button key={j}
+                    onClick={() => { setQuery(ex); handleSearch(ex); }}
+                    className="w-full text-left text-xs text-slate-500 hover:text-brand-400 transition-colors py-0.5">
+                    → {ex}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
 
-      {/* Floating Compare Bar */}
-      {comparedUnis.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4 animate-in slide-in-from-bottom-4">
-          <div className="flex items-center gap-2">
-            <Scale className="w-4 h-4 text-teal-400" />
-            <span className="text-xs font-bold">
-              {comparedUnis.length} / 3 Universities Selected
-            </span>
+      {/* AI Advisor CTA */}
+      <div className="card p-5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-slate-900 to-brand-950/30 border-brand-500/20">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-brand-500/20 flex items-center justify-center">
+            <Bot className="w-5 h-5 text-brand-400" />
           </div>
-
-          <div className="flex items-center gap-1.5">
-            {comparedUnis.map((u) => (
-              <span
-                key={u.id}
-                className="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-lg border border-slate-700 flex items-center gap-1"
-              >
-                <span className="truncate max-w-[100px]">{u.name}</span>
-                <button
-                  onClick={() => setComparedUnis(prev => prev.filter(x => x.id !== u.id))}
-                  className="text-slate-400 hover:text-white"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))}
+          <div>
+            <div className="font-bold text-white">Need deeper analysis?</div>
+            <div className="text-xs text-slate-400">Chat with AI Advisor for personalized, conversational guidance</div>
           </div>
-
-          <button
-            onClick={() => setShowCompareModal(true)}
-            className="px-3.5 py-1.5 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow"
-          >
-            Compare Side-by-Side
-          </button>
         </div>
-      )}
-
-      {/* Compare Modal */}
-      {showCompareModal && (
-        <CompareModal
-          selectedUniversities={comparedUnis}
-          onClose={() => setShowCompareModal(false)}
-          onRemove={(id) => setComparedUnis(prev => prev.filter(u => u.id !== id))}
-          onApply={(u) => {
-            const p = u.programs?.[0];
-            if (p) setActiveAppModal({ uni: u, prog: p });
-          }}
-        />
-      )}
-
-      {/* AI Match Modal */}
-      {activeMatchModal && (
-        <AiMatchModal
-          university={activeMatchModal.uni}
-          program={activeMatchModal.prog}
-          profile={user}
-          onClose={() => setActiveMatchModal(null)}
-          onAddToApplications={(u, p) => setActiveAppModal({ uni: u, prog: p })}
-        />
-      )}
-
-      {/* Application Creation Modal */}
-      {activeAppModal && (
-        <ApplicationModal
-          initialData={{
-            universityId: activeAppModal.uni.id,
-            universityName: activeAppModal.uni.name,
-            country: activeAppModal.uni.country,
-            programTitle: activeAppModal.prog.title,
-            degreeLevel: activeAppModal.prog.degreeLevel,
-            intakeTerm: activeAppModal.prog.intakeTerm,
-            deadline: activeAppModal.prog.applicationDeadlineUpcoming,
-            portalUrl: activeAppModal.prog.officialProgramUrl || activeAppModal.uni.admissionsUrl,
-            status: 'Preparing'
-          }}
-          onClose={() => setActiveAppModal(null)}
-          onSave={handleCreateApplication}
-        />
-      )}
-
-      {/* Live Google Search Modal */}
-      {showLiveSearchModal && (
-        <LiveSearchModal
-          initialCategory="universities"
-          onClose={() => setShowLiveSearchModal(false)}
-        />
-      )}
+        <Link to="/advisor" className="btn-primary text-sm shrink-0">
+          Open AI Advisor <Sparkles className="w-4 h-4" />
+        </Link>
+      </div>
     </div>
   );
 };

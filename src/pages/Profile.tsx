@@ -1,408 +1,243 @@
+// ============================================================
+// Profile Settings Page
+// ============================================================
 import React, { useState } from 'react';
 import {
-  User,
-  GraduationCap,
-  Globe,
-  DollarSign,
-  Languages,
-  CheckCircle2,
-  Save,
-  Briefcase
+  User, Save, Loader2, Mail, Globe, GraduationCap,
+  DollarSign, BookOpen, Shield, CheckCircle2, Camera
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../context/ToastContext';
-import { formatCurrencyPkr } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { UserProfile, DegreeLevel, IeltsStatus, FundingPreference } from '../types';
 
 export const Profile: React.FC = () => {
-  const { user, updateProfile } = useAuth();
+  const { profile, updateProfile, logout } = useAuth();
   const { showToast } = useToast();
-
-  const [fullName, setFullName] = useState(user?.fullName || 'Hamza Tariq');
-  const [email, setEmail] = useState(user?.email || 'hamza.tariq@example.com');
-  const [phone, setPhone] = useState(user?.phone || '+92 300 1234567');
-  const [nationality, setNationality] = useState(user?.nationality || 'Pakistani');
-  const [residenceCity, setResidenceCity] = useState(user?.residenceCity || 'Lahore, Punjab');
-
-  // Academic
-  const [degreeTitle, setDegreeTitle] = useState(user?.degreeTitle || 'BS Computer Science');
-  const [institutionName, setInstitutionName] = useState(user?.institutionName || 'FAST-NUCES Lahore');
-  const [cgpa, setCgpa] = useState<number>(user?.cgpa || 3.35);
-  const [maxCgpa, setMaxCgpa] = useState<number>(user?.maxCgpa || 4.0);
-  const [graduationYear, setGraduationYear] = useState<number>(user?.graduationYear || 2025);
-
-  // Target preferences
-  const [targetDegree, setTargetDegree] = useState<'Bachelor' | 'Master' | 'PhD' | 'Diploma'>(user?.targetDegree || 'Master');
-  const [intendedMajor, setIntendedMajor] = useState(user?.intendedMajor || 'Computer Science & AI');
-  const [preferredCountries, setPreferredCountries] = useState<string[]>(user?.preferredCountries || ['Germany', 'United Kingdom', 'Italy']);
-
-  // Budget
-  const [maxTuitionBudgetPkr, setMaxTuitionBudgetPkr] = useState<number>(user?.maxTuitionBudgetPkr || 2500000);
-  const [fundingPreference, setFundingPreference] = useState(user?.fundingPreference || 'Partial Scholarship + Self');
-
-  // Testing
-  const [ieltsStatus, setIeltsStatus] = useState(user?.ieltsStatus || 'Completed');
-  const [ieltsScore, setIeltsScore] = useState<number | undefined>(user?.ieltsScore || 7.0);
-
-  // Work & Gap
-  const [workExperienceYears, setWorkExperienceYears] = useState<number>(user?.workExperienceYears || 1);
-  const [studyGapYears, setStudyGapYears] = useState<number>(user?.studyGapYears || 0);
-
   const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState<Partial<UserProfile>>(profile || {});
+  const [activeTab, setActiveTab] = useState<'personal' | 'academic' | 'goals' | 'financial'>('personal');
 
-  const handleCountryToggle = (country: string) => {
-    if (preferredCountries.includes(country)) {
-      if (preferredCountries.length > 1) {
-        setPreferredCountries(preferredCountries.filter(c => c !== country));
-      }
-    } else {
-      setPreferredCountries([...preferredCountries, country]);
-    }
+  const update = (key: keyof UserProfile, value: unknown) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async () => {
     setSaving(true);
-    const success = await updateProfile({
-      fullName,
-      email,
-      phone,
-      nationality,
-      residenceCity,
-      degreeTitle,
-      institutionName,
-      cgpa,
-      maxCgpa,
-      graduationYear,
-      targetDegree,
-      intendedMajor,
-      preferredCountries,
-      maxTuitionBudgetPkr,
-      fundingPreference: fundingPreference as any,
-      ieltsStatus: ieltsStatus as any,
-      ieltsScore,
-      workExperienceYears,
-      studyGapYears,
-      isOnboarded: true
-    });
+    const success = await updateProfile(formData);
     setSaving(false);
-    if (success) {
-      showToast("Profile & study preferences updated successfully", "success");
-    } else {
-      showToast("Failed to update profile", "error");
-    }
+    if (success) showToast('Profile saved!', 'success');
+    else showToast('Failed to save profile.', 'error');
   };
+
+  const TABS = [
+    { id: 'personal', label: 'Personal Info', icon: <User className="w-4 h-4" /> },
+    { id: 'academic', label: 'Academic', icon: <GraduationCap className="w-4 h-4" /> },
+    { id: 'goals', label: 'Study Goals', icon: <Globe className="w-4 h-4" /> },
+    { id: 'financial', label: 'Financial', icon: <DollarSign className="w-4 h-4" /> },
+  ] as const;
+
+  const COUNTRIES = [
+    'Germany', 'United Kingdom', 'United States', 'Canada', 'Australia',
+    'France', 'Netherlands', 'Sweden', 'Italy', 'Switzerland', 'Japan',
+    'South Korea', 'Singapore', 'Ireland', 'New Zealand', 'Other'
+  ];
 
   return (
-    <div className="space-y-6 pb-16">
+    <div className="space-y-6 max-w-3xl animate-fade-in">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs bg-teal-50 text-teal-800 font-bold px-2 py-0.5 rounded uppercase">
-            Candidate Dossier
-          </span>
-          <span className="text-xs text-slate-500 font-medium">Underpinning AI Matching Logic</span>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-white">Profile Settings</h1>
+          <p className="text-slate-400 text-sm mt-1">Your profile helps AI personalize recommendations for you</p>
         </div>
-        <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
-          Student Profile & Study Preferences
-        </h1>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Your accurate CGPA scale, Pakistani university, and PKR budget drive all algorithmic matching and visa roadmaps.
-        </p>
+        <button onClick={handleSave} disabled={saving} className="btn-primary text-sm">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Personal & Contact Card */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4 text-xs">
-          <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-            <User className="w-4 h-4 text-teal-600" />
-            <h3 className="font-bold text-slate-900 text-sm">Personal & Geographic Information</h3>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Full Legal Name *</label>
-              <input
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Email Address *</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Phone Number (WhatsApp)</label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500"
-              />
+      {/* Profile Header Card */}
+      <div className="card p-6">
+        <div className="flex items-center gap-5">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-2xl gradient-brand flex items-center justify-center text-surface-950 text-2xl font-black">
+              {profile?.fullName?.[0]?.toUpperCase() || '?'}
             </div>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Current City & Province in Pakistan</label>
-              <input
-                type="text"
-                value={residenceCity}
-                onChange={(e) => setResidenceCity(e.target.value)}
-                placeholder="e.g. Lahore, Punjab or Islamabad, ICT"
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Nationality</label>
-              <input
-                type="text"
-                value={nationality}
-                onChange={(e) => setNationality(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500 bg-slate-50"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Academic Profile */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4 text-xs">
-          <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-            <GraduationCap className="w-4 h-4 text-indigo-600" />
-            <h3 className="font-bold text-slate-900 text-sm">Academic Qualifications & Grading</h3>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Completed Degree Title *</label>
-              <input
-                type="text"
-                required
-                value={degreeTitle}
-                onChange={(e) => setDegreeTitle(e.target.value)}
-                placeholder="e.g. BS Computer Science (4 Years)"
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Pakistani University / Board *</label>
-              <input
-                type="text"
-                required
-                value={institutionName}
-                onChange={(e) => setInstitutionName(e.target.value)}
-                placeholder="e.g. NUST, FAST, LUMS, Punjab University"
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Cumulative CGPA *</label>
-              <input
-                type="number"
-                step="0.01"
-                min="1.0"
-                max={maxCgpa}
-                value={cgpa}
-                onChange={(e) => setCgpa(parseFloat(e.target.value) || 0)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 focus:outline-none focus:border-teal-500"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Grading Scale (Max CGPA)</label>
-              <select
-                value={maxCgpa}
-                onChange={(e) => setMaxCgpa(parseFloat(e.target.value))}
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500 bg-white"
-              >
-                <option value={4.0}>4.0 Scale (Standard Pakistani Universities)</option>
-                <option value={5.0}>5.0 Scale</option>
-                <option value={10.0}>10.0 Scale</option>
-              </select>
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Graduation Year</label>
-              <input
-                type="number"
-                value={graduationYear}
-                onChange={(e) => setGraduationYear(parseInt(e.target.value, 10) || 2025)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Study Abroad Targets & Budget */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4 text-xs">
-          <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-            <Globe className="w-4 h-4 text-emerald-600" />
-            <h3 className="font-bold text-slate-900 text-sm">Target Degree, Countries & PKR Budget</h3>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Target Degree Level *</label>
-              <select
-                value={targetDegree}
-                onChange={(e) => setTargetDegree(e.target.value as any)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500 bg-white"
-              >
-                <option value="Bachelor">Bachelor (Undergraduate)</option>
-                <option value="Master">Master (Postgraduate / MS / MPhil)</option>
-                <option value="PhD">PhD / Doctoral Fellowship</option>
-              </select>
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Intended Major / Specialization *</label>
-              <input
-                type="text"
-                required
-                value={intendedMajor}
-                onChange={(e) => setIntendedMajor(e.target.value)}
-                placeholder="e.g. Artificial Intelligence, Data Science, Mechanical Eng"
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500"
-              />
-            </div>
-          </div>
-
           <div>
-            <label className="block font-semibold text-slate-700 mb-2">Preferred Destinations</label>
-            <div className="flex flex-wrap gap-2">
-              {['Germany', 'United Kingdom', 'Italy', 'United States', 'Turkey', 'Australia', 'Canada', 'Sweden'].map((c) => {
-                const isSelected = preferredCountries.includes(c);
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => handleCountryToggle(c)}
-                    className={`px-3 py-1.5 rounded-xl font-bold transition-all border ${
-                      isSelected
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    {isSelected ? `✓ ${c}` : `+ ${c}`}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Max Annual Tuition Budget: {formatCurrencyPkr(maxTuitionBudgetPkr)}
-              </label>
-              <input
-                type="range"
-                min={0}
-                max={8000000}
-                step={250000}
-                value={maxTuitionBudgetPkr}
-                onChange={(e) => setMaxTuitionBudgetPkr(parseInt(e.target.value, 10))}
-                className="w-full accent-teal-600 mt-2"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Funding Strategy</label>
-              <select
-                value={fundingPreference}
-                onChange={(e) => setFundingPreference(e.target.value as any)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500 bg-white"
-              >
-                <option value="Partial Scholarship + Self">Partial Scholarship + Family Contribution</option>
-                <option value="Full Scholarship Only">Full Scholarship Only (DAAD/Chevening/DSU)</option>
-                <option value="Fully Self-Funded">Fully Self-Funded</option>
-              </select>
+            <h2 className="text-lg font-black text-white">{profile?.fullName || 'Your Name'}</h2>
+            <p className="text-sm text-slate-400">{profile?.email}</p>
+            <div className="flex items-center gap-2 mt-2">
+              {profile?.isOnboarded ? (
+                <span className="badge badge-brand text-[10px]"><CheckCircle2 className="w-3 h-3" /> Profile Complete</span>
+              ) : (
+                <span className="badge bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px]">Profile Incomplete</span>
+              )}
+              <span className="badge badge-purple text-[10px]">
+                {profile?.role || 'student'}
+              </span>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* English Testing & Work Experience */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4 text-xs">
-          <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-            <Languages className="w-4 h-4 text-amber-600" />
-            <h3 className="font-bold text-slate-900 text-sm">English Testing & Career Profile</h3>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">IELTS / PTE Status</label>
-              <select
-                value={ieltsStatus}
-                onChange={(e) => setIeltsStatus(e.target.value as any)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500 bg-white"
-              >
-                <option value="Completed">Test Completed (Have TRF)</option>
-                <option value="Booked">Test Date Booked</option>
-                <option value="Preparing">Currently Preparing</option>
-                <option value="Exempt">English Proficiency Certificate (Medium of Instruction)</option>
-              </select>
-            </div>
-            {ieltsStatus === 'Completed' && (
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Overall IELTS Band Score</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  min="4.0"
-                  max="9.0"
-                  value={ieltsScore || 7.0}
-                  onChange={(e) => setIeltsScore(parseFloat(e.target.value) || 0)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-900 focus:outline-none focus:border-teal-500"
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Post-Graduation Work Experience (Years)</label>
-              <input
-                type="number"
-                min="0"
-                max="20"
-                value={workExperienceYears}
-                onChange={(e) => setWorkExperienceYears(parseInt(e.target.value, 10) || 0)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Study Gap (Years if any)</label>
-              <input
-                type="number"
-                min="0"
-                max="10"
-                value={studyGapYears}
-                onChange={(e) => setStudyGapYears(parseInt(e.target.value, 10) || 0)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-teal-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Submit Bar */}
-        <div className="flex items-center justify-end gap-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-2xl shadow-lg shadow-teal-500/20 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 text-xs"
-          >
-            <Save className="w-4 h-4" />
-            <span>{saving ? 'Updating Database...' : 'Save Profile & Update Matching Engine'}</span>
+      {/* Tabs */}
+      <div className="flex gap-1 bg-slate-900 p-1 rounded-2xl border border-slate-800">
+        {TABS.map(tab => (
+          <button key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === tab.id
+                ? 'bg-brand-500 text-surface-950 shadow-lg'
+                : 'text-slate-400 hover:text-white'
+            }`}>
+            {tab.icon}
+            <span className="hidden sm:block">{tab.label}</span>
           </button>
-        </div>
-      </form>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <div className="card p-6 space-y-5">
+        {/* Personal Info */}
+        {activeTab === 'personal' && (
+          <div className="space-y-4">
+            <h3 className="font-bold text-white text-sm border-b border-slate-800 pb-3">Personal Information</h3>
+            <div className="grid gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Full Name</label>
+                <input className="input-dark" value={formData.fullName || ''} onChange={e => update('fullName', e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Nationality</label>
+                  <input className="input-dark" value={formData.nationality || ''} onChange={e => update('nationality', e.target.value)} placeholder="e.g. Pakistani" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Current City</label>
+                  <input className="input-dark" value={formData.residenceCity || ''} onChange={e => update('residenceCity', e.target.value)} placeholder="e.g. Lahore, Pakistan" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Academic */}
+        {activeTab === 'academic' && (
+          <div className="space-y-4">
+            <h3 className="font-bold text-white text-sm border-b border-slate-800 pb-3">Academic Background</h3>
+            <div className="grid gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Degree Title</label>
+                <input className="input-dark" value={formData.degreeTitle || ''} onChange={e => update('degreeTitle', e.target.value)} placeholder="e.g. Bachelor of Engineering" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Institution Name</label>
+                <input className="input-dark" value={formData.institutionName || ''} onChange={e => update('institutionName', e.target.value)} placeholder="University name" />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">CGPA</label>
+                  <input type="number" step="0.01" className="input-dark" value={formData.cgpa || ''} onChange={e => update('cgpa', parseFloat(e.target.value))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Out of</label>
+                  <input type="number" className="input-dark" value={formData.maxCgpa || 4} onChange={e => update('maxCgpa', parseFloat(e.target.value))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Grad Year</label>
+                  <input type="number" className="input-dark" value={formData.graduationYear || ''} onChange={e => update('graduationYear', parseInt(e.target.value))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">IELTS Status</label>
+                  <select className="input-dark" value={formData.ieltsStatus || 'Preparing'} onChange={e => update('ieltsStatus', e.target.value as IeltsStatus)}>
+                    {(['Completed', 'Booked', 'Preparing', 'Exempt'] as IeltsStatus[]).map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">IELTS Score</label>
+                  <input type="number" step="0.5" min="0" max="9" className="input-dark" value={formData.ieltsScore || ''} onChange={e => update('ieltsScore', parseFloat(e.target.value))} placeholder="e.g. 7.0" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Extracurriculars / Research</label>
+                <textarea className="input-dark resize-none" rows={2} value={formData.extracurriculars || ''} onChange={e => update('extracurriculars', e.target.value)} placeholder="Publications, research projects, leadership, awards..." />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Study Goals */}
+        {activeTab === 'goals' && (
+          <div className="space-y-4">
+            <h3 className="font-bold text-white text-sm border-b border-slate-800 pb-3">Study Goals</h3>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-2">Target Degree</label>
+              <div className="grid grid-cols-4 gap-2">
+                {(['Bachelor', 'Master', 'PhD', 'Diploma'] as DegreeLevel[]).map(d => (
+                  <button key={d} onClick={() => update('targetDegree', d)}
+                    className={`py-2 text-xs font-semibold rounded-xl border transition-all ${
+                      formData.targetDegree === d
+                        ? 'bg-brand-500/20 border-brand-500 text-brand-400'
+                        : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}>{d}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Intended Majors (comma-separated)</label>
+              <input className="input-dark" value={formData.intendedMajors?.join(', ') || ''}
+                onChange={e => update('intendedMajors', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                placeholder="Computer Science, Data Science" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Preferred Countries (comma-separated)</label>
+              <input className="input-dark" value={formData.preferredCountries?.join(', ') || ''}
+                onChange={e => update('preferredCountries', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                placeholder="Germany, UK, Canada" />
+            </div>
+          </div>
+        )}
+
+        {/* Financial */}
+        {activeTab === 'financial' && (
+          <div className="space-y-4">
+            <h3 className="font-bold text-white text-sm border-b border-slate-800 pb-3">Financial Details</h3>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-3">
+                Annual Tuition Budget: <span className="text-brand-400">${(formData.maxTuitionBudgetUsd || 0).toLocaleString()} USD</span>
+              </label>
+              <input type="range" min="0" max="60000" step="1000"
+                value={formData.maxTuitionBudgetUsd || 0}
+                onChange={e => update('maxTuitionBudgetUsd', parseInt(e.target.value))}
+                className="w-full accent-brand-500" />
+              <div className="flex justify-between text-xs text-slate-500 mt-1">
+                <span>$0 (Scholarship only)</span>
+                <span>$60,000+</span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-2">Funding Preference</label>
+              <div className="space-y-2">
+                {(['Full Scholarship Only', 'Partial Scholarship + Self', 'Fully Self-Funded'] as FundingPreference[]).map(f => (
+                  <button key={f} onClick={() => update('fundingPreference', f)}
+                    className={`w-full text-left py-3 px-4 rounded-xl text-sm font-semibold border transition-all ${
+                      formData.fundingPreference === f
+                        ? 'bg-brand-500/15 border-brand-500 text-brand-300'
+                        : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}>{f}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <button onClick={handleSave} disabled={saving} className="btn-primary w-full justify-center py-3 text-sm">
+        {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save All Changes</>}
+      </button>
     </div>
   );
 };

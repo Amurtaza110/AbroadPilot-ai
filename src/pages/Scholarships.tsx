@@ -1,303 +1,260 @@
-import React, { useState, useEffect } from 'react';
+// ============================================================
+// Scholarships Page — AI-Powered Scholarship Discovery
+// ============================================================
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  Award,
-  Bookmark,
-  ExternalLink,
-  ShieldCheck,
-  CheckCircle2,
-  AlertCircle,
-  Calendar,
-  Globe,
-  DollarSign,
-  Search,
-  Sparkles
+  Award, Sparkles, Search, Loader2, Globe, DollarSign,
+  Calendar, ExternalLink, Bot, GraduationCap, Filter
 } from 'lucide-react';
-import { Scholarship, formatCurrencyPkr, convertToPkr } from '../types';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../context/ToastContext';
-import { LiveSearchModal } from '../components/LiveSearchModal';
+import { useAuth } from '../contexts/AuthContext';
+import { streamChat } from '../lib/gemini';
+
+const FEATURED_SCHOLARSHIPS = [
+  {
+    name: 'DAAD Scholarship (Germany)',
+    coverage: 'Fully Funded',
+    value: '~$25,000/year',
+    deadline: 'Oct–Nov annually',
+    countries: ['Germany'],
+    url: 'https://www.daad.de/en/',
+    flag: '🇩🇪',
+    tags: ['STEM', 'Social Sciences', 'Arts'],
+  },
+  {
+    name: 'Chevening Scholarships (UK)',
+    coverage: 'Fully Funded',
+    value: '~£18,000–£30,000',
+    deadline: 'November annually',
+    countries: ['United Kingdom'],
+    url: 'https://www.chevening.org/',
+    flag: '🇬🇧',
+    tags: ['Master\'s', 'Leadership', '1 year'],
+  },
+  {
+    name: 'Erasmus Mundus',
+    coverage: 'Fully Funded',
+    value: '€10,000–€21,000/year',
+    deadline: 'Jan–Mar annually',
+    countries: ['European Union'],
+    url: 'https://erasmus-plus.ec.europa.eu/',
+    flag: '🇪🇺',
+    tags: ['Joint Degree', 'International', 'Master/PhD'],
+  },
+  {
+    name: 'Commonwealth Scholarships',
+    coverage: 'Fully Funded',
+    value: 'Full tuition + stipend',
+    deadline: 'December annually',
+    countries: ['United Kingdom'],
+    url: 'https://cscuk.fcdo.gov.uk/',
+    flag: '🇬🇧',
+    tags: ['Commonwealth', 'Master\'s', 'PhD'],
+  },
+  {
+    name: 'Gates Cambridge Scholarship',
+    coverage: 'Fully Funded',
+    value: '£45,000+',
+    deadline: 'October annually',
+    countries: ['United Kingdom'],
+    url: 'https://www.gatescambridge.org/',
+    flag: '🇬🇧',
+    tags: ['Cambridge', 'High Achievement', 'All Degrees'],
+  },
+  {
+    name: 'Vanier Canada Graduate Scholarship',
+    coverage: 'Fully Funded',
+    value: 'CAD $50,000/year',
+    deadline: 'November annually',
+    countries: ['Canada'],
+    url: 'https://vanier.gc.ca/',
+    flag: '🇨🇦',
+    tags: ['PhD', 'Research', 'Leadership'],
+  },
+];
 
 export const Scholarships: React.FC = () => {
-  const { user } = useAuth();
-  const { showToast } = useToast();
-  const [scholarships, setScholarships] = useState<Scholarship[]>([]);
-  const [savedIds, setSavedIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { profile } = useAuth();
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  // Filters
-  const [selectedDestination, setSelectedDestination] = useState<string>('All');
-  const [selectedCoverage, setSelectedCoverage] = useState<string>('All');
-  const [pakistanPriorityOnly, setPakistanPriorityOnly] = useState<boolean>(false);
-  const [showLiveSearchModal, setShowLiveSearchModal] = useState<boolean>(false);
+  const handleSearch = async (searchQuery?: string) => {
+    const q = searchQuery || query;
+    if (!q.trim() || loading) return;
 
-  const fetchScholarships = async () => {
-    try {
-      const res = await fetch('/api/v1/scholarships');
-      const data = await res.json();
-      if (data.success) {
-        setScholarships(data.scholarships || []);
-        setSavedIds(data.savedScholarshipIds || []);
+    setLoading(true);
+    setHasSearched(true);
+    setResults('');
+
+    const profileContext = profile?.isOnboarded
+      ? `Student profile: ${profile.nationality} student, ${profile.targetDegree} in ${profile.intendedMajors.join(', ')}, CGPA ${profile.cgpa}/${profile.maxCgpa}, IELTS ${profile.ieltsScore || profile.ieltsStatus}, Countries: ${profile.preferredCountries.join(', ')}, Funding: ${profile.fundingPreference}`
+      : '';
+
+    const enhancedQuery = `${q}${profileContext ? `\n\nStudent context: ${profileContext}. Show eligibility notes.` : ''}`;
+
+    await streamChat(
+      enhancedQuery,
+      { useWebSearch: true, profile },
+      (chunk) => {
+        if (!chunk.done) setResults(prev => prev + chunk.text);
+        else setLoading(false);
       }
-    } catch (err) {
-      console.error('Failed to load scholarships:', err);
-    } finally {
-      setLoading(false);
-    }
+    );
+    setLoading(false);
   };
 
-  useEffect(() => {
-    fetchScholarships();
-  }, []);
+  const quickSearches = [
+    profile?.isOnboarded
+      ? `Find fully funded scholarships for ${profile.nationality} ${profile.targetDegree} students in ${profile.preferredCountries[0] || 'Europe'}`
+      : 'Find fully funded scholarships for international students in Europe',
+    'DAAD Germany scholarship 2025 requirements and application steps',
+    'Erasmus Mundus scholarships list with deadlines 2025-2026',
+    'Scholarships for developing country students with low CGPA',
+    'No-IELTS scholarships for master\'s students',
+  ];
 
-  const handleToggleSave = async (id: string) => {
-    try {
-      const res = await fetch(`/api/v1/scholarships/${id}/toggle-save`, { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        setSavedIds(data.savedScholarshipIds);
-        const isNowSaved = data.savedScholarshipIds.includes(id);
-        showToast(isNowSaved ? "Scholarship added to your Tracker" : "Removed from Tracker", "info");
+  const renderText = (text: string) => {
+    return text.split('\n').map((line, i) => {
+      if (line.startsWith('## ')) return <h3 key={i} className="text-base font-bold text-brand-300 mt-4 mb-1">{line.slice(3)}</h3>;
+      if (line.startsWith('### ')) return <h4 key={i} className="text-sm font-bold text-white mt-3 mb-1">{line.slice(4)}</h4>;
+      if (line.startsWith('- ') || line.startsWith('• ')) {
+        const parts = line.slice(2).split(/\*\*(.*?)\*\*/g);
+        return <li key={i} className="ml-5 text-sm text-slate-300 leading-relaxed py-0.5">
+          {parts.map((p, j) => j % 2 === 1 ? <strong key={j} className="text-white">{p}</strong> : p)}
+        </li>;
       }
-    } catch (err) {
-      console.error('Toggle save scholarship error:', err);
-    }
+      if (line.trim() === '') return <div key={i} className="h-2" />;
+      const parts = line.split(/\*\*(.*?)\*\*/g);
+      return <p key={i} className="text-sm text-slate-300 leading-relaxed">
+        {parts.map((p, j) => j % 2 === 1 ? <strong key={j} className="text-white">{p}</strong> : p)}
+      </p>;
+    });
   };
-
-  // Eligibility evaluation against current student profile
-  const checkEligibility = (sch: Scholarship) => {
-    if (!user) return { eligible: true, note: 'Profile not set' };
-    if (user.cgpa < sch.minCgpa) {
-      return { eligible: false, note: `Requires CGPA ${sch.minCgpa}+ (You have ${user.cgpa})` };
-    }
-    if (sch.ieltsRequired && sch.minIeltsScore && (user.ieltsScore || 0) < sch.minIeltsScore) {
-      return { eligible: false, note: `Requires IELTS ${sch.minIeltsScore}+` };
-    }
-    return { eligible: true, note: 'Candidate Appears Eligible' };
-  };
-
-  const filteredScholarships = scholarships.filter(s => {
-    if (selectedDestination !== 'All' && !s.destinationCountries.includes(selectedDestination)) return false;
-    if (selectedCoverage !== 'All' && s.coverageType !== selectedCoverage) return false;
-    if (pakistanPriorityOnly && !s.isPakistanSpecificOrPriority) return false;
-    return true;
-  });
 
   return (
-    <div className="space-y-6 pb-16">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs bg-amber-50 text-amber-900 font-bold px-2 py-0.5 rounded uppercase">
-              Funding Opportunities
-            </span>
-            <span className="text-xs text-slate-500 font-medium">Government & Bilateral Grants</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
-            Scholarship Discovery & Tracking
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Verified funding schemes available for Pakistani scholars pursuing Bachelor, Master, and PhD degrees abroad.
-          </p>
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="badge badge-brand"><Sparkles className="w-3 h-3" /> AI + Live Search</span>
+          <span className="badge badge-gold"><Award className="w-3 h-3" /> Scholarships</span>
+        </div>
+        <h1 className="text-2xl font-black text-white">Scholarships</h1>
+        <p className="text-slate-400 text-sm mt-1">Find scholarships you're eligible for with personalized AI search</p>
+      </div>
+
+      {/* AI Search */}
+      <div className="card p-6 space-y-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Bot className="w-4 h-4 text-brand-400" />
+          <span className="text-sm font-bold text-white">AI Scholarship Search</span>
+          <span className="badge badge-brand text-[10px] ml-auto">Real-time Web Search</span>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            placeholder="e.g. 'Fully funded PhD scholarships for African students in Germany'"
+            className="input-dark pl-12 pr-28 py-4 text-sm"
+            disabled={loading}
+          />
+          <button
+            onClick={() => handleSearch()}
+            disabled={!query.trim() || loading}
+            className="absolute right-2 top-1/2 -translate-y-1/2 btn-primary text-xs py-2.5 disabled:opacity-40"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Sparkles className="w-3.5 h-3.5" /> Find</>}
+          </button>
         </div>
 
-        <div className="text-xs font-semibold text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200 self-start sm:self-auto shadow-sm">
-          {savedIds.length} Scholarships Tracked
+        <div className="flex flex-wrap gap-2">
+          {quickSearches.map((q, i) => (
+            <button key={i}
+              onClick={() => { setQuery(q); handleSearch(q); }}
+              disabled={loading}
+              className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-brand-500/40 text-slate-300 hover:text-white rounded-full transition-all disabled:opacity-40">
+              {q}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Live Google Search Grounded Scholarships Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-4 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg border border-indigo-800/40">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shrink-0">
-            <Award className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-sm text-white">Find 2025/2026 Scholarships with Google Search</span>
-              <span className="text-[10px] bg-indigo-400/20 text-indigo-300 font-bold px-2 py-0.5 rounded-full border border-indigo-400/30">
-                Google Search Grounded
-              </span>
+      {/* AI Results */}
+      {(hasSearched || results) && (
+        <div className="card p-6">
+          {loading && !results && (
+            <div className="flex items-center gap-3 text-slate-400 py-4">
+              <Loader2 className="w-5 h-5 animate-spin text-brand-400" />
+              <span className="text-sm">Searching live scholarship databases...</span>
             </div>
-            <p className="text-xs text-slate-300 mt-0.5">
-              Search live government calls, university fee waivers, and international bilateral grants for Pakistani applicants.
-            </p>
-          </div>
+          )}
+          {results && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-800">
+                <Sparkles className="w-4 h-4 text-brand-400" />
+                <span className="text-sm font-bold text-white">AI Scholarship Results</span>
+              </div>
+              {renderText(results)}
+              {loading && <span className="inline-block w-0.5 h-4 bg-brand-400 animate-pulse" />}
+            </div>
+          )}
         </div>
+      )}
 
-        <button
-          onClick={() => setShowLiveSearchModal(true)}
-          className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-2 shadow-md shrink-0 transition-all hover:scale-[1.02] active:scale-[0.98]"
-        >
-          <Search className="w-3.5 h-3.5 text-white" />
-          <span>Live Search Scholarships</span>
-        </button>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap items-center gap-3">
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Destination</label>
-            <select
-              value={selectedDestination}
-              onChange={(e) => setSelectedDestination(e.target.value)}
-              className="p-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800"
-            >
-              <option value="All">All Countries</option>
-              <option value="United Kingdom">United Kingdom (Chevening)</option>
-              <option value="Germany">Germany (DAAD EPOS)</option>
-              <option value="United States">United States (Fulbright USEFP)</option>
-              <option value="Turkey">Turkey (Türkiye Bursları)</option>
-              <option value="Italy">Italy (DSU Regional)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Coverage</label>
-            <select
-              value={selectedCoverage}
-              onChange={(e) => setSelectedCoverage(e.target.value)}
-              className="p-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800"
-            >
-              <option value="All">All Coverage</option>
-              <option value="Fully Funded">Fully Funded (Tuition + Stipend + Flights)</option>
-              <option value="Living Stipend">Living Stipend / Housing</option>
-              <option value="Tuition Waiver">Tuition Waiver Only</option>
-            </select>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setPakistanPriorityOnly(!pakistanPriorityOnly)}
-          className={`py-2 px-3 rounded-xl font-bold text-xs transition-colors border ${
-            pakistanPriorityOnly
-              ? 'bg-teal-600 border-teal-600 text-white'
-              : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-          }`}
-        >
-          {pakistanPriorityOnly ? '✓ Showing Pakistan Specific' : 'Filter Pakistan Priority Programs'}
-        </button>
-      </div>
-
-      {/* Cards Grid */}
-      {loading ? (
-        <div className="py-20 text-center">
-          <div className="w-8 h-8 border-4 border-teal-500/30 border-t-teal-500 rounded-full animate-spin mx-auto" />
-        </div>
-      ) : filteredScholarships.length === 0 ? (
-        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 text-slate-500">
-          <Award className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-          <h3 className="font-bold text-slate-800 text-base">No scholarships match your filters</h3>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredScholarships.map((sch) => {
-            const isSaved = savedIds.includes(sch.id);
-            const eligibility = checkEligibility(sch);
-
-            return (
-              <div
-                key={sch.id}
-                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-extrabold bg-teal-100 text-teal-800 px-2 py-0.5 rounded">
-                          {sch.coverageType}
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-medium">
-                          {sch.destinationCountries.join(', ')}
-                        </span>
-                      </div>
-                      <h3 className="font-bold text-slate-900 text-base mt-1.5">{sch.name}</h3>
-                      <p className="text-xs text-slate-500 font-medium">{sch.provider}</p>
-                    </div>
-
-                    <button
-                      onClick={() => handleToggleSave(sch.id)}
-                      className={`p-2 rounded-xl transition-colors ${
-                        isSaved ? 'bg-amber-500 text-slate-950' : 'bg-slate-100 text-slate-400 hover:text-slate-800'
-                      }`}
-                      title={isSaved ? "Saved" : "Save scholarship"}
-                    >
-                      <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
-                    </button>
+      {/* Featured Scholarships */}
+      <div>
+        <h2 className="text-lg font-bold text-white mb-4">🌟 Notable Scholarships</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {FEATURED_SCHOLARSHIPS.map((s, i) => (
+            <div key={i} className="card p-5 space-y-3 hover:scale-[1.01] transition-all">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{s.flag}</span>
+                  <div>
+                    <h3 className="text-sm font-bold text-white leading-tight">{s.name}</h3>
+                    <span className={`badge text-[9px] mt-1 ${s.coverage === 'Fully Funded' ? 'badge-brand' : 'badge-gold'}`}>
+                      {s.coverage}
+                    </span>
                   </div>
-
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    {sch.description}
-                  </p>
-
-                  {/* Academic Criteria & Eligibility Badge */}
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Academic Requirement</span>
-                      <span
-                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                          eligibility.eligible
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-rose-100 text-rose-800'
-                        }`}
-                      >
-                        {eligibility.note}
-                      </span>
-                    </div>
-                    <div className="text-slate-700 leading-normal text-[11px]">
-                      {sch.academicCriteria}
-                    </div>
-                  </div>
-
-                  {/* Required Documents Checklist */}
-                  {sch.requiredDocuments && sch.requiredDocuments.length > 0 && (
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">
-                        Core Dossier Required:
-                      </span>
-                      <ul className="text-[11px] text-slate-600 space-y-1">
-                        {sch.requiredDocuments.slice(0, 3).map((doc, idx) => (
-                          <li key={idx} className="flex items-start gap-1.5">
-                            <span className="text-teal-600 font-bold">•</span>
-                            <span className="line-clamp-1">{doc}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer Link & Verification */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1.5 text-emerald-700 font-medium text-[11px]">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Verified: {sch.lastVerified}</span>
-                  </div>
-
-                  <a
-                    href={sch.applicationUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 text-teal-600 hover:text-teal-800 font-bold hover:underline"
-                  >
-                    <span>Official Portal</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
                 </div>
               </div>
-            );
-          })}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{s.value}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{s.deadline}</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {s.tags.map((t, j) => (
+                  <span key={j} className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700">
+                    {t}
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <a href={s.url} target="_blank" rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-brand-400 bg-brand-400/10 border border-brand-400/20 rounded-xl hover:bg-brand-400/20 transition-colors">
+                  <ExternalLink className="w-3 h-3" /> Official Site
+                </a>
+                <button
+                  onClick={() => { setQuery(`${s.name} requirements, eligibility, and application process 2025`); handleSearch(`${s.name} requirements, eligibility, and application process 2025`); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-slate-300 bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700 transition-colors">
+                  <Bot className="w-3 h-3" /> AI Details
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-      )}
-
-      {/* Live Google Search Modal */}
-      {showLiveSearchModal && (
-        <LiveSearchModal
-          initialCategory="scholarships"
-          onClose={() => setShowLiveSearchModal(false)}
-        />
-      )}
+      </div>
     </div>
   );
 };

@@ -1,427 +1,357 @@
+// ============================================================
+// Dashboard Page — Real Data from Firestore
+// ============================================================
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  Compass,
-  ArrowRight,
-  CheckCircle2,
-  Clock,
-  Sparkles,
-  MapPin,
-  GraduationCap,
-  Award,
-  FileText,
-  FolderLock,
-  ShieldCheck,
-  TrendingUp,
-  DollarSign,
-  AlertTriangle,
-  Plus
+  Sparkles, ArrowRight, CheckCircle2, Clock, FileText,
+  FolderOpen, Award, Map, Bot, TrendingUp, Plus,
+  GraduationCap, Globe, Zap, AlertTriangle, Activity
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { RoadmapTask, University, Application, StudentDocument, formatCurrencyPkr, convertToPkr } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import { getRoadmapTasks, getApplications, getDocuments } from '../lib/firestore';
+import { RoadmapTask, Application, StudentDocument } from '../types';
 
-interface DashboardProps {
-  onNavigateTab: (tab: string) => void;
-  onOpenSopAssistant: () => void;
-  onOpenEmailDraft: () => void;
-}
-
-export const Dashboard: React.FC<DashboardProps> = ({
-  onNavigateTab,
-  onOpenSopAssistant,
-  onOpenEmailDraft
-}) => {
-  const { user } = useAuth();
+export const Dashboard: React.FC = () => {
+  const { profile } = useAuth();
   const [tasks, setTasks] = useState<RoadmapTask[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [documents, setDocuments] = useState<StudentDocument[]>([]);
-  const [savedUnis, setSavedUnis] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadDashboardData = async () => {
+    const load = async () => {
+      if (!profile?.uid) return;
       try {
-        const [tasksRes, appsRes, docsRes, unisRes] = await Promise.all([
-          fetch('/api/v1/roadmap'),
-          fetch('/api/v1/applications'),
-          fetch('/api/v1/documents'),
-          fetch('/api/v1/universities')
+        const [t, a, d] = await Promise.all([
+          getRoadmapTasks(profile.uid),
+          getApplications(profile.uid),
+          getDocuments(profile.uid)
         ]);
-        const tasksData = await tasksRes.json();
-        const appsData = await appsRes.json();
-        const docsData = await docsRes.json();
-        const unisData = await unisRes.json();
-
-        if (tasksData.tasks) setTasks(tasksData.tasks);
-        if (appsData.applications) setApplications(appsData.applications);
-        if (docsData.documents) setDocuments(docsData.documents);
-        if (unisData.savedUniversityIds) setSavedUnis(unisData.savedUniversityIds);
+        setTasks(t);
+        setApplications(a);
+        setDocuments(d);
       } catch (err) {
-        console.error('Failed to load dashboard data:', err);
+        console.error('Dashboard load error:', err);
       } finally {
         setLoading(false);
       }
     };
+    load();
+  }, [profile?.uid]);
 
-    loadDashboardData();
-  }, []);
+  const completedTasks = tasks.filter(t => t.status === 'completed').length;
+  const totalTasks = tasks.length;
+  const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const urgentTasks = tasks.filter(t => t.priority === 'urgent' && t.status !== 'completed');
+  const nextTasks = tasks.filter(t => t.status === 'not_started' || t.status === 'in_progress').slice(0, 4);
+  const activeApps = applications.filter(a => !['Accepted', 'Rejected', 'Withdrawn'].includes(a.status));
+  const verifiedDocs = documents.filter(d => d.status === 'Verified' || d.status === 'Attested').length;
 
-  // Calculations
-  const completedTasks = tasks.filter(t => t.status === 'completed');
-  const progressPercent = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0;
-  const nextActions = tasks
-    .filter(t => t.status === 'not_started' || t.status === 'in_progress')
-    .slice(0, 3);
-
-  const attestedDocsCount = documents.filter(d => d.status === 'attested' || d.status === 'verified').length;
-
-  const handleQuickCompleteTask = async (task: RoadmapTask) => {
-    try {
-      const res = await fetch(`/api/v1/roadmap/tasks/${task.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'completed' })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'completed' } : t));
-      }
-    } catch (err) {
-      console.error('Failed to complete task:', err);
-    }
+  const greeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 18) return 'Good afternoon';
+    return 'Good evening';
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="h-32 rounded-2xl bg-slate-900 shimmer animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 pb-12">
-      {/* Welcome Hero Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-slate-900 text-white p-6 sm:p-8 border border-slate-800 shadow-xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="flex items-center gap-2">
-              <span className="text-xs bg-teal-500 text-slate-950 font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                AbroadPilot Journey Hub
-              </span>
-              <span className="text-xs text-slate-400 font-medium">
-                {user?.residenceCity || 'Pakistan'} Edition
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Welcome back, {user?.fullName || 'Candidate'}!
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Targeting <span className="text-teal-400 font-semibold">{user?.targetDegree || 'Master'}</span> in{' '}
-              <span className="text-white font-semibold">{user?.intendedMajor || 'Computer Science'}</span> across{' '}
-              <span className="text-teal-300 font-medium">{user?.preferredCountries?.join(', ') || 'Germany, UK, Italy'}</span>.
-            </p>
-          </div>
+    <div className="space-y-8 pb-12 animate-fade-in">
+      {/* Welcome Banner */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-brand-950 border border-slate-800 p-6 sm:p-8">
+        <div className="absolute inset-0 gradient-glow-teal" />
+        <div className="absolute top-0 right-0 w-80 h-80 bg-accent-500/5 rounded-full blur-3xl" />
 
-          {/* Quick Actions in Banner */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              onClick={() => onNavigateTab('roadmap')}
-              className="px-4 py-2.5 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-teal-500/20 transition-all flex items-center gap-2 hover:scale-[1.02]"
-            >
-              <span>Continue Roadmap</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => onNavigateTab('discover')}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 transition-colors flex items-center gap-2"
-            >
-              <GraduationCap className="w-4 h-4 text-teal-400" />
-              <span>Explore Universities</span>
-            </button>
-            <button
-              onClick={() => onNavigateTab('advisor')}
-              className="px-4 py-2.5 bg-gradient-to-r from-teal-500/20 to-indigo-500/20 hover:from-teal-500/30 hover:to-indigo-500/30 text-teal-300 font-bold text-xs rounded-xl border border-teal-500/40 transition-colors flex items-center gap-2"
-            >
-              <Sparkles className="w-4 h-4 text-teal-300" />
-              <span>Live Search Grounding</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Roadmap Progress Strip */}
-        <div className="mt-8 pt-6 border-t border-slate-800/80">
-          <div className="flex items-center justify-between text-xs mb-2">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-200">Interactive 10-Stage Study Abroad Roadmap</span>
-              <span className="text-[11px] text-teal-400 font-medium">
-                ({completedTasks.length} of {tasks.length} Milestones Cleared)
-              </span>
-            </div>
-            <span className="font-extrabold text-teal-300 text-sm">{progressPercent}% Completed</span>
-          </div>
-          <div className="w-full h-3 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-800">
-            <div
-              className="h-full bg-gradient-to-r from-teal-500 via-teal-400 to-emerald-300 rounded-full transition-all duration-500 shadow-sm"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 4 Core Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Saved Universities */}
-        <div
-          onClick={() => onNavigateTab('discover')}
-          className="p-4 bg-white rounded-2xl border border-slate-200 hover:border-slate-300 shadow-sm transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold">Shortlisted Universities</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <GraduationCap className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">{savedUnis.length}</div>
-          <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-            <span>Discover & Compare programs</span>
-            <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-          </div>
-        </div>
-
-        {/* Active Applications */}
-        <div
-          onClick={() => onNavigateTab('applications')}
-          className="p-4 bg-white rounded-2xl border border-slate-200 hover:border-slate-300 shadow-sm transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold">Tracked Applications</span>
-            <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <FileText className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">{applications.length}</div>
-          <div className="text-[11px] text-teal-700 font-medium mt-1 flex items-center gap-1">
-            <span>{applications.filter(a => a.status === 'Submitted' || a.status === 'Accepted').length} Active Submissions</span>
-          </div>
-        </div>
-
-        {/* Attested Vault Documents */}
-        <div
-          onClick={() => onNavigateTab('documents')}
-          className="p-4 bg-white rounded-2xl border border-slate-200 hover:border-slate-300 shadow-sm transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold">Document Vault</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <FolderLock className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">{documents.length}</div>
-          <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-            <span>{attestedDocsCount} Attested & Verified</span>
-          </div>
-        </div>
-
-        {/* Annual Budget Ceiling */}
-        <div
-          onClick={() => onNavigateTab('calculator')}
-          className="p-4 bg-white rounded-2xl border border-slate-200 hover:border-slate-300 shadow-sm transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold">Tuition Budget (PKR)</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <DollarSign className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-xl font-black text-slate-900 truncate">
-            {formatCurrencyPkr(user?.maxTuitionBudgetPkr || 2500000)}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-            <span>{user?.fundingPreference || 'Partial + Self'}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Two Column Layout: What should I do next? & Active Applications */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Next Recommended Actions (7 cols) */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] bg-teal-50 text-teal-800 font-extrabold px-2 py-0.5 rounded uppercase">
-                  Action Center
-                </span>
-                <span className="font-bold text-slate-900 text-sm">What should I do next?</span>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Top 3 prioritized milestones based on your profile and target intake dates.
-              </p>
-            </div>
-            <button
-              onClick={() => onNavigateTab('roadmap')}
-              className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center gap-1 hover:underline"
-            >
-              Full Roadmap <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-start justify-between gap-6">
           <div className="space-y-3">
-            {nextActions.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 text-xs">
-                <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-                All scheduled roadmap milestones are currently completed!
-              </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="badge badge-brand">
+                <Sparkles className="w-3 h-3" /> AI Powered
+              </span>
+              {profile?.isOnboarded && (
+                <span className="badge badge-purple">
+                  <Activity className="w-3 h-3" /> {progressPercent}% Roadmap Progress
+                </span>
+              )}
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white">
+              {greeting()},{' '}
+              <span className="text-gradient">{profile?.fullName?.split(' ')[0] || 'Explorer'}!</span>
+            </h1>
+            {profile?.isOnboarded ? (
+              <p className="text-slate-400 text-sm max-w-xl leading-relaxed">
+                You're targeting a{' '}
+                <span className="text-brand-400 font-semibold">{profile.targetDegree}</span> in{' '}
+                <span className="text-white font-semibold">{profile.intendedMajors[0] || 'your field'}</span>{' '}
+                across{' '}
+                <span className="text-brand-300 font-medium">{profile.preferredCountries.slice(0, 3).join(', ')}</span>.
+                {urgentTasks.length > 0 && (
+                  <span className="text-amber-400 font-semibold"> {urgentTasks.length} urgent task{urgentTasks.length !== 1 ? 's' : ''} need attention.</span>
+                )}
+              </p>
             ) : (
-              nextActions.map((task, idx) => (
-                <div
-                  key={task.id}
-                  className="p-3.5 rounded-xl border border-slate-200/90 hover:border-slate-300 bg-slate-50/50 hover:bg-slate-50 transition-all flex items-start justify-between gap-3"
-                >
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded">
-                        Stage {task.stageNumber}
-                      </span>
-                      {task.priority === 'urgent' && (
-                        <span className="text-[10px] font-bold bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded">
-                          Urgent
-                        </span>
-                      )}
-                      <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> Due {task.dueDate}
-                      </span>
-                    </div>
-
-                    <h4 className="font-bold text-slate-900 text-xs">{task.title}</h4>
-                    <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">
-                      {task.description}
-                    </p>
-
-                    {task.subtasks && task.subtasks.length > 0 && (
-                      <div className="text-[10px] text-teal-700 font-medium pt-1">
-                        {task.subtasks.filter(s => s.completed).length} of {task.subtasks.length} checklist items verified
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => handleQuickCompleteTask(task)}
-                    className="p-2 rounded-xl bg-white border border-slate-200 hover:border-teal-400 text-slate-400 hover:text-teal-600 transition-colors shadow-sm shrink-0"
-                    title="Mark task completed"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))
+              <p className="text-slate-400 text-sm">
+                Complete your profile to get a personalized AI roadmap and recommendations.
+              </p>
             )}
           </div>
 
-          {/* Quick AI Tools Bar */}
-          <div className="p-3.5 rounded-xl bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <Sparkles className="w-4 h-4 text-teal-400 shrink-0" />
-              <div>
-                <div className="font-bold text-xs text-white">Need Application Support?</div>
-                <div className="text-[11px] text-slate-300">Generate an SOP draft or professor inquiry email.</div>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <Link to="/advisor" className="btn-primary text-xs">
+              <Bot className="w-3.5 h-3.5" /> Ask AI Advisor
+            </Link>
+            <Link to="/discover" className="btn-ghost text-xs">
+              <Compass className="w-3.5 h-3.5" /> Explore Programs
+            </Link>
+          </div>
+        </div>
+
+        {/* Progress Strip */}
+        {totalTasks > 0 && (
+          <div className="relative z-10 mt-6 pt-6 border-t border-slate-800">
+            <div className="flex items-center justify-between text-xs mb-2">
+              <span className="text-slate-300 font-semibold">Study Abroad Roadmap Progress</span>
+              <span className="text-brand-400 font-bold">{completedTasks}/{totalTasks} milestones</span>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          {
+            to: '/applications',
+            icon: <FileText className="w-4 h-4" />,
+            label: 'Applications',
+            value: applications.length,
+            sub: `${activeApps.length} active`,
+            color: 'text-blue-400 bg-blue-400/10'
+          },
+          {
+            to: '/roadmap',
+            icon: <Map className="w-4 h-4" />,
+            label: 'Roadmap Tasks',
+            value: totalTasks,
+            sub: `${completedTasks} completed`,
+            color: 'text-brand-400 bg-brand-400/10'
+          },
+          {
+            to: '/documents',
+            icon: <FolderOpen className="w-4 h-4" />,
+            label: 'Documents',
+            value: documents.length,
+            sub: `${verifiedDocs} verified`,
+            color: 'text-emerald-400 bg-emerald-400/10'
+          },
+          {
+            to: '/scholarships',
+            icon: <Award className="w-4 h-4" />,
+            label: 'Scholarships',
+            value: profile?.preferredCountries?.length || 0,
+            sub: 'Countries targeted',
+            color: 'text-amber-400 bg-amber-400/10'
+          }
+        ].map((stat, i) => (
+          <Link key={i} to={stat.to}
+            className="card p-5 flex flex-col gap-3 hover:scale-[1.01] transition-all cursor-pointer">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-400">{stat.label}</span>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stat.color}`}>
+                {stat.icon}
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={onOpenSopAssistant}
-                className="px-3 py-1.5 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs rounded-lg transition-colors"
-              >
-                SOP Assistant
-              </button>
-              <button
-                onClick={onOpenEmailDraft}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-lg transition-colors"
-              >
-                Inquiry Email
-              </button>
+            <div className="text-3xl font-black text-white">{stat.value}</div>
+            <div className="text-xs text-slate-500">{stat.sub}</div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Next Actions */}
+        <div className="lg:col-span-7 card p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="badge badge-brand text-[10px]">Action Center</span>
+                <h2 className="font-bold text-white text-sm">What to do next</h2>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Your top priority roadmap milestones</p>
+            </div>
+            <Link to="/roadmap" className="text-xs font-semibold text-brand-400 hover:underline flex items-center gap-1">
+              Full Roadmap <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          {nextTasks.length === 0 ? (
+            <div className="py-10 text-center space-y-3">
+              <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+              <div>
+                <p className="text-sm font-semibold text-slate-300">All tasks complete!</p>
+                <p className="text-xs text-slate-500 mt-1">Your roadmap is fully up to date.</p>
+              </div>
+              {totalTasks === 0 && (
+                <Link to="/advisor" className="btn-primary text-xs mx-auto">
+                  <Bot className="w-3.5 h-3.5" /> Generate AI Roadmap
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {nextTasks.map(task => (
+                <div key={task.id}
+                  className="p-4 rounded-2xl border border-slate-800 hover:border-brand-500/30 bg-slate-900/50 hover:bg-slate-900 transition-all">
+                  <div className="flex items-start gap-3">
+                    <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
+                      task.priority === 'urgent' ? 'bg-rose-400 animate-pulse' :
+                      task.priority === 'high' ? 'bg-amber-400' :
+                      task.priority === 'medium' ? 'bg-brand-400' : 'bg-slate-500'
+                    }`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="text-[10px] font-bold text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">
+                          Stage {task.stage}
+                        </span>
+                        {task.priority === 'urgent' && (
+                          <span className="text-[10px] font-bold text-rose-400 bg-rose-400/10 px-1.5 py-0.5 rounded border border-rose-400/20">
+                            URGENT
+                          </span>
+                        )}
+                        <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> {task.dueDate}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-semibold text-white">{task.title}</h3>
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-2">{task.description}</p>
+                      {task.subtasks?.length > 0 && (
+                        <div className="text-[10px] text-brand-400 mt-1.5 font-medium">
+                          {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length} subtasks done
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* AI Tools Banner */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-surface-900 to-accent-950/30 border border-accent-500/20 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-accent-500/20 flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-accent-400" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white">Need application help?</div>
+                <div className="text-xs text-slate-400">AI can write your SOP or professor inquiry email</div>
+              </div>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <Link to="/advisor?task=sop" className="px-3 py-1.5 text-xs font-bold bg-brand-500 hover:bg-brand-400 text-surface-950 rounded-lg transition-colors">
+                Write SOP
+              </Link>
+              <Link to="/advisor?task=email" className="px-3 py-1.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-colors border border-slate-700">
+                Draft Email
+              </Link>
             </div>
           </div>
         </div>
 
-        {/* Right: Active Applications & Quick Visa Prep Checklist (5 cols) */}
+        {/* Right Column */}
         <div className="lg:col-span-5 space-y-6">
-          {/* Active Applications Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          {/* Active Applications */}
+          <div className="card p-5 space-y-4">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-teal-600" />
-                <span className="font-bold text-slate-900 text-sm">Active Applications</span>
+                <FileText className="w-4 h-4 text-blue-400" />
+                <h2 className="font-bold text-white text-sm">Active Applications</h2>
               </div>
-              <button
-                onClick={() => onNavigateTab('applications')}
-                className="text-xs font-semibold text-teal-600 hover:underline"
-              >
-                View Workspace
-              </button>
+              <Link to="/applications" className="text-xs text-brand-400 font-semibold hover:underline">
+                View All
+              </Link>
             </div>
 
-            <div className="space-y-2.5">
-              {applications.length === 0 ? (
-                <div className="text-center py-6 text-slate-400 text-xs">
-                  No active university applications tracked yet.
-                  <button
-                    onClick={() => onNavigateTab('discover')}
-                    className="block mx-auto mt-2 text-teal-600 font-semibold hover:underline"
-                  >
-                    Explore verified programs
-                  </button>
-                </div>
-              ) : (
-                applications.slice(0, 3).map((app) => (
-                  <div
-                    key={app.id}
-                    className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between text-xs"
-                  >
-                    <div>
-                      <div className="font-bold text-slate-900">{app.universityName}</div>
-                      <div className="text-[11px] text-slate-500">{app.programTitle}</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">
-                        Deadline: {app.deadline} • {app.country}
-                      </div>
+            {activeApps.length === 0 ? (
+              <div className="py-6 text-center">
+                <p className="text-xs text-slate-500">No active applications yet.</p>
+                <Link to="/discover" className="block mt-2 text-xs text-brand-400 font-semibold hover:underline">
+                  Explore universities →
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {activeApps.slice(0, 4).map(app => (
+                  <div key={app.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all">
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-white truncate">{app.universityName}</div>
+                      <div className="text-[11px] text-slate-500 truncate">{app.programTitle}</div>
+                      <div className="text-[10px] text-slate-600 mt-0.5">Due: {app.deadline}</div>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-teal-100 text-teal-800 border border-teal-200 shrink-0">
+                    <span className={`ml-2 shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      app.status === 'Accepted' ? 'status-accepted border-current' :
+                      app.status === 'Rejected' ? 'status-rejected border-current' :
+                      app.status === 'Submitted' ? 'status-submitted border-current' :
+                      'status-pending border-current'
+                    }`}>
                       {app.status}
                     </span>
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
+
+            <Link to="/applications" className="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-dashed border-slate-700 hover:border-brand-500 text-xs text-slate-500 hover:text-brand-400 transition-all">
+              <Plus className="w-3.5 h-3.5" /> Track New Application
+            </Link>
           </div>
 
-          {/* Pakistan Student Visa Readiness Widget */}
-          <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-sm space-y-3 border border-slate-800">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-teal-400" />
-                <span className="font-bold text-sm">Pakistan Visa Essentials</span>
-              </div>
-              <button
-                onClick={() => onNavigateTab('visa')}
-                className="text-xs font-semibold text-teal-400 hover:underline"
-              >
-                Full Checklists
-              </button>
+          {/* Quick AI Actions */}
+          <div className="card p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <Bot className="w-4 h-4 text-brand-400" />
+              <h2 className="font-bold text-white text-sm">Quick AI Tools</h2>
             </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Applying from Pakistan requires early preparation of authentic documents:
-            </p>
-
-            <ul className="space-y-2 text-xs text-slate-300">
-              <li className="flex items-start gap-2">
-                <span className="text-teal-400 font-bold">•</span>
-                <span><strong>Germany:</strong> APS certificate from APS Islamabad mandatory.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-teal-400 font-bold">•</span>
-                <span><strong>UK:</strong> 28-day continuous bank maintenance & IOM TB test.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-teal-400 font-bold">•</span>
-                <span><strong>Italy:</strong> Universitaly pre-enrolment & DSU financial grant.</span>
-              </li>
-            </ul>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { to: '/discover', icon: <GraduationCap className="w-4 h-4" />, label: 'Find Universities', color: 'text-blue-400 bg-blue-400/10 hover:bg-blue-400/20' },
+                { to: '/scholarships', icon: <Award className="w-4 h-4" />, label: 'Match Scholarships', color: 'text-amber-400 bg-amber-400/10 hover:bg-amber-400/20' },
+                { to: '/visa', icon: <Globe className="w-4 h-4" />, label: 'Visa Checklist', color: 'text-emerald-400 bg-emerald-400/10 hover:bg-emerald-400/20' },
+                { to: '/cost-planner', icon: <TrendingUp className="w-4 h-4" />, label: 'Plan Costs', color: 'text-purple-400 bg-purple-400/10 hover:bg-purple-400/20' },
+              ].map((item, i) => (
+                <Link key={i} to={item.to}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-xl text-center transition-all ${item.color}`}>
+                  {item.icon}
+                  <span className="text-xs font-semibold">{item.label}</span>
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
+// Fix missing import
+function Compass({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="12" cy="12" r="10"/>
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+    </svg>
+  );
+}
